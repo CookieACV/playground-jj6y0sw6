@@ -64,7 +64,7 @@ func _ready():
 	make_hud()
 	load_game()
 	if car:
-		car.global_transform = Transform3D(Basis(), Vector3(0, g + 1.2, 0))
+		car.global_transform = Transform3D(Basis(), Vector3(0, g + 2.0, 0))
 		car.start_transform = car.global_transform
 		if not owned.has(current_model):
 			current_model = 0
@@ -178,12 +178,26 @@ func add_multimesh(mesh: Mesh, material: Material, transforms: Array):
 	add_child(node)
 
 
+# A flat floor that is solid everywhere (the old Ground box is hidden)
 func setup_ground():
-	var ground = get_node_or_null("Ground")
-	if ground:
-		ground.size = Vector3(9000, 1, 9000)
-		ground.material = mat("grass", Color(0.3, 0.5, 0.22))
-		g = ground.position.y + ground.size.y / 2.0
+	var old_ground = get_node_or_null("Ground")
+	if old_ground:
+		old_ground.use_collision = false
+		old_ground.visible = false
+	g = 0.5
+	var floor_body = StaticBody3D.new()
+	floor_body.position = Vector3(0, g, 0)
+	add_child(floor_body)
+	var col = CollisionShape3D.new()
+	col.shape = WorldBoundaryShape3D.new()
+	floor_body.add_child(col)
+	var grass = MeshInstance3D.new()
+	var plane = PlaneMesh.new()
+	plane.size = Vector2(9000, 9000)
+	grass.mesh = plane
+	grass.material_override = mat("grass", Color(0.3, 0.5, 0.22))
+	grass.position = Vector3(0, g, 0)
+	add_child(grass)
 
 
 # Building walls with windows, drawn into a tiny picture that repeats
@@ -364,11 +378,26 @@ func build_person(shirt: Color) -> Node3D:
 	var hairs = [Color(0.1, 0.07, 0.05), Color(0.4, 0.25, 0.1), Color(0.85, 0.7, 0.3), Color(0.2, 0.2, 0.2)]
 	var pants = [Color(0.15, 0.2, 0.4), Color(0.2, 0.2, 0.2), Color(0.45, 0.38, 0.28)]
 	var skin = skins[rng.randi() % skins.size()]
+	var pants_mat = mat_color(pants[rng.randi() % pants.size()])
 	var person = Node3D.new()
-	box(person, Vector3(0.32, 0.8, 0.22), Vector3(0, 0.4, 0), mat("pants" + str(rng.randi() % 3), pants[rng.randi() % pants.size()]))
+	var legs: Array = []
+	var arms: Array = []
+	for side in [-1.0, 1.0]:
+		# each leg hangs from a hip joint so it can swing
+		var hip = Node3D.new()
+		hip.position = Vector3(0.09 * side, 0.8, 0)
+		person.add_child(hip)
+		box(hip, Vector3(0.14, 0.8, 0.18), Vector3(0, -0.4, 0), pants_mat)
+		box(hip, Vector3(0.15, 0.08, 0.26), Vector3(0, -0.76, 0.04), mat_color(Color(0.1, 0.1, 0.1)))
+		legs.append(hip)
+		# each arm hangs from a shoulder joint
+		var shoulder = Node3D.new()
+		shoulder.position = Vector3(0.3 * side, 1.38, 0)
+		person.add_child(shoulder)
+		box(shoulder, Vector3(0.12, 0.58, 0.14), Vector3(0, -0.29, 0), mat_color(shirt))
+		arms.append(shoulder)
 	box(person, Vector3(0.46, 0.62, 0.26), Vector3(0, 1.11, 0), mat_color(shirt))
-	box(person, Vector3(0.12, 0.6, 0.14), Vector3(-0.3, 1.1, 0), mat_color(shirt))
-	var arm = box(person, Vector3(0.12, 0.6, 0.14), Vector3(0.3, 1.1, 0), mat_color(shirt))
+	var arm = arms[1]
 	var head = MeshInstance3D.new()
 	var sphere = SphereMesh.new()
 	sphere.radius = 0.16
@@ -379,6 +408,8 @@ func build_person(shirt: Color) -> Node3D:
 	person.add_child(head)
 	box(person, Vector3(0.3, 0.1, 0.3), Vector3(0, 1.74, 0), mat_color(hairs[rng.randi() % hairs.size()]))
 	person.set_meta("arm", arm)
+	person.set_meta("legs", legs)
+	person.set_meta("arms", arms)
 	return person
 
 
@@ -401,11 +432,11 @@ func build_people(count: int):
 		var node = build_person(shirts[rng.randi() % shirts.size()])
 		add_child(node)
 		people.append({"node": node, "a": a, "b": b, "t": rng.randf(), "dir": 1.0,
-			"speed": rng.randf_range(1.0, 1.8), "off": Vector3.ZERO, "phase": rng.randf() * 6.0})
+			"speed": rng.randf_range(1.0, 1.8), "off": Vector3.ZERO, "walk": rng.randf() * 6.0,
+			"legs": node.get_meta("legs"), "arms": node.get_meta("arms")})
 
 
 func update_people(delta):
-	var time = Time.get_ticks_msec() / 1000.0
 	var car_pos = car.global_position
 	var car_fast = car.linear_velocity.length() > 2.0
 	for p in people:
@@ -420,12 +451,21 @@ func update_people(delta):
 		var base = p["a"].lerp(p["b"], p["t"])
 		var away = base + p["off"] - car_pos
 		away.y = 0.0
+		var step_speed = p["speed"]
 		if car_fast and away.length() < 7.0:
-			p["off"] += away.normalized() * 10.0 * delta     # jump out of the way!
+			p["off"] += away.normalized() * 10.0 * delta     # run out of the way!
+			step_speed = 6.0
 		p["off"] = p["off"].move_toward(Vector3.ZERO, delta * 0.8)
+		# swing legs and arms like a real walk
+		p["walk"] += delta * step_speed * 4.0
+		var swing = sin(p["walk"]) * 0.55
+		p["legs"][0].rotation.x = swing
+		p["legs"][1].rotation.x = -swing
+		p["arms"][0].rotation.x = -swing * 0.8
+		p["arms"][1].rotation.x = swing * 0.8
 		var node = p["node"]
 		node.position = base + p["off"]
-		node.position.y = g + 0.06 + abs(sin(time * 9.0 + p["phase"])) * 0.06
+		node.position.y = g + 0.06
 		var dir = (p["b"] - p["a"]).normalized() * p["dir"]
 		node.rotation.y = atan2(dir.x, dir.z)
 
