@@ -1,19 +1,38 @@
 extends VehicleBody3D
-# BEAST CAR
+# PLAYER CAR
 # Controls: Up = gas, Down = brake/reverse, Left/Right = steer
 #           Shift = NITRO, Space = handbrake (drift), R = reset
 
-@export var body_color := Color(0.06, 0.06, 0.07)   # change me in the Inspector!
-@export var stripe_color := Color(0.9, 0.05, 0.05)
-@export var engine_power := 4000.0
-@export var top_speed_kmh := 220.0
-@export var nitro_power := 1.8          # how much stronger nitro makes the engine
-@export var max_steer := 0.4
+var models = [
+	{"name": "Starter Hatch", "price": 0, "power": 2400.0, "top": 150.0, "steer": 0.45,
+		"style": "hatch", "color": Color(0.15, 0.35, 0.8), "pitch": 1.15},
+	{"name": "City Taxi", "price": 800, "power": 2900.0, "top": 170.0, "steer": 0.42,
+		"style": "taxi", "color": Color(1.0, 0.78, 0.05), "pitch": 1.0},
+	{"name": "Pickup Truck", "price": 1800, "power": 3400.0, "top": 175.0, "steer": 0.4,
+		"style": "truck", "color": Color(0.2, 0.42, 0.25), "pitch": 0.75},
+	{"name": "Sports GT", "price": 4000, "power": 4300.0, "top": 235.0, "steer": 0.38,
+		"style": "sport", "color": Color(0.85, 0.08, 0.08), "pitch": 1.2},
+	{"name": "The Beast", "price": 8000, "power": 5300.0, "top": 265.0, "steer": 0.36,
+		"style": "beast", "color": Color(0.06, 0.06, 0.07), "pitch": 0.9},
+	{"name": "Hyper X", "price": 15000, "power": 6600.0, "top": 320.0, "steer": 0.34,
+		"style": "super", "color": Color(0.93, 0.93, 0.95), "pitch": 1.35},
+]
+
 @export var engine_sound := true
 
+var model_index := 0
+var engine_power := 2400.0
+var top_speed_kmh := 150.0
+var max_steer := 0.45
+var nitro_power := 1.8
+var pitch_scale := 1.0
+
 var start_transform: Transform3D
+var wheels: Array = []
 var rear_wheels: Array = []
+var wheel_parts: Array = []
 var flames: Array = []
+var look: Node3D
 var nitro := 100.0
 var boosting := false
 var speed_label: Label
@@ -37,16 +56,54 @@ func _ready():
 			wheel.damping_compression = 3.0
 			wheel.damping_relaxation = 4.0
 			wheel.wheel_friction_slip = 4.0
+			wheels.append(wheel)
 			if wheel.use_as_traction:
 				rear_wheels.append(wheel)
-			add_wheel_look(wheel)
-	add_car_look()
+	var old_body = get_node_or_null("Body")
+	if old_body:
+		old_body.visible = false
 	make_hud()
 	cam = get_node_or_null("Camera3D")
 	if cam:
-		cam.top_level = true   # camera moves on its own and follows smoothly
+		cam.top_level = true
 	if engine_sound:
 		setup_engine_sound()
+	apply_model(0)
+
+
+# Switch to one of the cars in "models"
+func apply_model(index: int):
+	model_index = index
+	var m = models[index]
+	engine_power = m["power"]
+	top_speed_kmh = m["top"]
+	max_steer = m["steer"]
+	pitch_scale = m["pitch"]
+	if look:
+		look.queue_free()
+	for p in wheel_parts:
+		p.queue_free()
+	wheel_parts.clear()
+	flames.clear()
+	look = Node3D.new()
+	add_child(look)
+	build_body(look, m["style"], m["color"])
+	var back_z = -style_dims(m["style"])["L"] / 2.0
+	for x in [-0.4, 0.4]:
+		var flame = add_box(look, Vector3(0.12, 0.12, 0.45), Color(0.2, 0.5, 1.0),
+			Vector3(x, -0.22, back_z - 0.35), true)
+		flame.visible = false
+		flames.append(flame)
+	var rim = Color(0.8, 0.8, 0.85)
+	if m["style"] == "beast":
+		rim = Color(0.9, 0.05, 0.05)
+	for wheel in wheels:
+		var side = sign(wheel.position.x)
+		var r = wheel.wheel_radius
+		wheel_parts.append(add_cylinder(wheel, r, 0.34, Color(0.04, 0.04, 0.04),
+			Vector3(0.1 * side, 0, 0), Vector3(0, 0, 90)))
+		wheel_parts.append(add_cylinder(wheel, r * 0.55, 0.36, rim,
+			Vector3(0.1 * side, 0, 0), Vector3(0, 0, 90), 0.8))
 
 
 func _physics_process(delta):
@@ -60,7 +117,6 @@ func _physics_process(delta):
 	var speed = linear_velocity.length()
 	var kmh = abs(forward_speed) * 3.6
 
-	# NITRO
 	boosting = Input.is_key_pressed(KEY_SHIFT) and nitro > 0.0 and throttle > 0.0
 	if boosting:
 		nitro = max(nitro - 30.0 * delta, 0.0)
@@ -69,7 +125,6 @@ func _physics_process(delta):
 	for flame in flames:
 		flame.visible = boosting
 
-	# ENGINE (gets weaker near top speed)
 	var power = engine_power
 	var top = top_speed_kmh
 	if boosting:
@@ -79,20 +134,16 @@ func _physics_process(delta):
 		power *= clamp(1.0 - kmh / top, 0.0, 1.0)
 	engine_force = throttle * power
 
-	# STEERING (less steering at high speed so you don't spin out)
 	var steer_limit = lerp(max_steer, 0.1, clamp(kmh / 200.0, 0.0, 1.0))
 	steering = move_toward(steering, turn * steer_limit, delta * 3.0)
 
-	# HANDBRAKE DRIFT: back wheels lose grip
 	var drifting = Input.is_action_pressed("ui_accept")
 	for wheel in rear_wheels:
 		wheel.wheel_friction_slip = 1.2 if drifting else 4.0
 		wheel.brake = 3.0 if drifting else 0.0
 
-	# DOWNFORCE: push the car onto the road when it's fast
 	apply_central_force(Vector3.DOWN * speed * speed * 0.8)
 
-	# SPEEDOMETER
 	speed_label.text = str(int(kmh)) + " km/h"
 	nitro_bar.value = nitro
 
@@ -110,8 +161,6 @@ func reset_car():
 	nitro = 100.0
 
 
-# ---------- Chase camera ----------
-
 func update_camera(delta):
 	if cam == null:
 		return
@@ -120,7 +169,7 @@ func update_camera(delta):
 	if fwd.length() < 0.1:
 		fwd = Vector3.FORWARD
 	fwd = fwd.normalized()
-	var target = global_position - fwd * 7.0 + Vector3.UP * 2.8
+	var target = global_position - fwd * 7.5 + Vector3.UP * 3.0
 	cam.global_position = cam.global_position.lerp(target, clamp(delta * 5.0, 0.0, 1.0))
 	cam.look_at(global_position + fwd * 3.0 + Vector3.UP * 0.8, Vector3.UP)
 	var want_fov = 70.0 + linear_velocity.length() * 0.35
@@ -128,8 +177,6 @@ func update_camera(delta):
 		want_fov += 12.0
 	cam.fov = lerp(cam.fov, min(want_fov, 105.0), clamp(delta * 3.0, 0.0, 1.0))
 
-
-# ---------- Speedometer + nitro bar ----------
 
 func make_hud():
 	var layer = CanvasLayer.new()
@@ -157,8 +204,6 @@ func make_hud():
 	layer.add_child(nitro_bar)
 
 
-# ---------- Engine sound (made from maths, no sound file needed) ----------
-
 func setup_engine_sound():
 	var gen = AudioStreamGenerator.new()
 	gen.mix_rate = 22050.0
@@ -173,8 +218,8 @@ func setup_engine_sound():
 
 func update_engine_sound(delta):
 	var kmh = linear_velocity.length() * 3.6
-	var gear_rev = fmod(kmh, 55.0) / 55.0     # revs climb, then "change gear"
-	var target = 45.0 + gear_rev * 110.0 + min(kmh, 220.0) * 0.15
+	var gear_rev = fmod(kmh, 55.0) / 55.0
+	var target = (45.0 + gear_rev * 110.0 + min(kmh, 220.0) * 0.15) * pitch_scale
 	if boosting:
 		target += 25.0
 	engine_pitch = lerp(engine_pitch, target, clamp(delta * 6.0, 0.0, 1.0))
@@ -185,49 +230,116 @@ func update_engine_sound(delta):
 		engine_playback.push_frame(Vector2(s, s) * 0.4)
 
 
-# ---------- The beast look ----------
+# ---------- CAR LOOKS ----------
+# L = length, W = width, hb = lower body height, hc = cabin height,
+# cl = cabin length, cz = cabin position, ws = windscreen slope, rs = rear window slope
+func style_dims(style: String) -> Dictionary:
+	match style:
+		"hatch":
+			return {"L": 3.5, "W": 1.7, "hb": 0.58, "hc": 0.5, "cl": 1.5, "cz": -0.45, "ws": 0.6, "rs": 0.15}
+		"taxi":
+			return {"L": 3.9, "W": 1.74, "hb": 0.55, "hc": 0.46, "cl": 1.6, "cz": -0.2, "ws": 0.7, "rs": 0.55}
+		"truck":
+			return {"L": 4.1, "W": 1.84, "hb": 0.68, "hc": 0.6, "cl": 1.3, "cz": 0.55, "ws": 0.45, "rs": 0.0}
+		"sport":
+			return {"L": 3.9, "W": 1.8, "hb": 0.5, "hc": 0.38, "cl": 1.3, "cz": -0.35, "ws": 0.85, "rs": 0.7}
+		"beast":
+			return {"L": 3.6, "W": 1.75, "hb": 0.6, "hc": 0.38, "cl": 1.3, "cz": -0.35, "ws": 0.4, "rs": 0.3}
+		_:
+			return {"L": 4.0, "W": 1.9, "hb": 0.45, "hc": 0.33, "cl": 1.2, "cz": -0.2, "ws": 1.0, "rs": 0.8}
 
-func add_car_look():
-	var glass = Color(0.05, 0.07, 0.12)
+
+func build_body(parent: Node3D, style: String, color: Color):
+	var d = style_dims(style)
+	var L = d["L"]
+	var W = d["W"]
+	var hb = d["hb"]
+	var hc = d["hc"]
+	var cl = d["cl"]
+	var cz = d["cz"]
+	var glass = Color(0.05, 0.08, 0.13)
 	var dark = Color(0.03, 0.03, 0.03)
-	var body = get_node_or_null("Body")
-	if body:
-		body.material_override = make_material(body_color, 0.6)
-	add_box(Vector3(1.3, 0.38, 1.3), body_color, Vector3(0, 0.49, -0.35), false, 0.6)  # low roof
-	add_box(Vector3(1.32, 0.26, 1.05), glass, Vector3(0, 0.5, -0.35))                  # side windows
-	add_box(Vector3(1.22, 0.3, 0.05), glass, Vector3(0, 0.48, 0.31))                   # windscreen
-	add_box(Vector3(1.22, 0.28, 0.05), glass, Vector3(0, 0.48, -1.01))                 # back window
-	add_box(Vector3(0.5, 0.12, 0.6), dark, Vector3(0, 0.36, 0.9))                       # hood scoop
-	for x in [-0.2, 0.2]:                                                              # racing stripes
-		add_box(Vector3(0.16, 0.02, 3.22), stripe_color, Vector3(x, 0.31, 0))
-		add_box(Vector3(0.16, 0.02, 1.3), stripe_color, Vector3(x, 0.69, -0.35))
-	for x in [-0.5, 0.5]:                                                              # spoiler posts
-		add_box(Vector3(0.08, 0.3, 0.08), dark, Vector3(x, 0.45, -1.45))
-	add_box(Vector3(1.75, 0.06, 0.42), dark, Vector3(0, 0.62, -1.5))                   # spoiler wing
-	for x in [-0.82, 0.82]:                                                            # side skirts
-		add_box(Vector3(0.06, 0.12, 2.0), stripe_color, Vector3(x, -0.25, 0))
-	add_box(Vector3(1.66, 0.18, 0.12), dark, Vector3(0, -0.22, 1.62))                  # front bumper
-	add_box(Vector3(1.66, 0.18, 0.12), dark, Vector3(0, -0.22, -1.62))                 # back bumper
-	add_box(Vector3(0.38, 0.1, 0.05), Color(0.8, 0.9, 1.0), Vector3(0.52, 0.12, 1.61), true)   # headlights
-	add_box(Vector3(0.38, 0.1, 0.05), Color(0.8, 0.9, 1.0), Vector3(-0.52, 0.12, 1.61), true)
-	add_box(Vector3(1.3, 0.07, 0.05), Color(1.0, 0.05, 0.02), Vector3(0, 0.15, -1.61), true)   # tail light bar
-	for x in [-0.4, 0.4]:
-		add_cylinder(self, 0.07, 0.25, Color(0.7, 0.7, 0.75), Vector3(x, -0.2, -1.7), Vector3(90, 0, 0), 0.9)
-		var flame = add_box(Vector3(0.12, 0.12, 0.45), Color(0.2, 0.5, 1.0), Vector3(x, -0.2, -2.0), true)
-		flame.visible = false
-		flames.append(flame)
+	var chrome = Color(0.8, 0.8, 0.85)
+	var top = -0.3 + hb
+	var fz = L / 2.0
+	var bz = -L / 2.0
+	var cab_front = cz + cl / 2.0
+	var cab_back = cz - cl / 2.0
+
+	add_box(parent, Vector3(W, hb, L), color, Vector3(0, -0.3 + hb / 2.0, 0), false, 0.5)
+	add_box(parent, Vector3(W - 0.12, hc, cl), color, Vector3(0, top + hc / 2.0, cz), false, 0.5)
+	add_box(parent, Vector3(W - 0.1, hc * 0.62, cl - 0.25), glass, Vector3(0, top + hc * 0.48, cz))
+	add_wedge(parent, d["ws"], hc, W - 0.2, Vector3(0, top + hc / 2.0, cab_front + d["ws"] / 2.0), 1.0, glass)
+	if d["rs"] > 0.01:
+		add_wedge(parent, d["rs"], hc, W - 0.2, Vector3(0, top + hc / 2.0, cab_back - d["rs"] / 2.0), 0.0, glass)
+
+	add_box(parent, Vector3(W + 0.04, 0.16, 0.14), dark, Vector3(0, -0.24, fz))
+	add_box(parent, Vector3(W + 0.04, 0.16, 0.14), dark, Vector3(0, -0.24, bz))
+	add_box(parent, Vector3(W * 0.5, 0.14, 0.03), dark, Vector3(0, top - 0.15, fz + 0.01))
+	add_box(parent, Vector3(W * 0.5, 0.025, 0.035), chrome, Vector3(0, top - 0.07, fz + 0.012), false, 0.9)
+	for s in [-1.0, 1.0]:
+		var x = s * (W / 2.0 - 0.28)
+		add_box(parent, Vector3(0.36, 0.11, 0.04), Color(0.85, 0.92, 1.0), Vector3(x, top - 0.1, fz + 0.01), true)
+		add_box(parent, Vector3(0.36, 0.1, 0.04), Color(1.0, 0.05, 0.02), Vector3(x, top - 0.1, bz - 0.01), true)
+		add_box(parent, Vector3(0.16, 0.09, 0.07), color, Vector3(s * (W / 2.0 + 0.05), top + 0.12, cab_front - 0.05))
+		add_box(parent, Vector3(0.02, 0.06, L * 0.7), dark, Vector3(s * (W / 2.0 + 0.005), -0.12, 0))
+		add_box(parent, Vector3(0.02, hb * 0.75, 0.02), dark, Vector3(s * (W / 2.0 + 0.005), -0.3 + hb / 2.0, cz + cl * 0.1))
+	add_box(parent, Vector3(0.42, 0.12, 0.02), Color(0.95, 0.95, 0.9), Vector3(0, -0.16, fz + 0.08))
+	add_box(parent, Vector3(0.42, 0.12, 0.02), Color(0.95, 0.95, 0.9), Vector3(0, -0.16, bz - 0.08))
+
+	match style:
+		"taxi":
+			add_box(parent, Vector3(0.6, 0.18, 0.25), Color(1.0, 0.95, 0.7), Vector3(0, top + hc + 0.09, cz), true)
+			for i in range(8):
+				if i % 2 == 0:
+					for s in [-1.0, 1.0]:
+						add_box(parent, Vector3(0.02, 0.08, 0.25), dark, Vector3(s * (W / 2.0 + 0.006), top - 0.18, -1.0 + i * 0.25))
+		"truck":
+			var bed_len = cab_back - bz - 0.1
+			var bed_z = (cab_back + bz) / 2.0 - 0.05
+			add_box(parent, Vector3(W - 0.1, 0.05, bed_len), dark, Vector3(0, top + 0.02, bed_z))
+			for s in [-1.0, 1.0]:
+				add_box(parent, Vector3(0.08, 0.35, bed_len), color, Vector3(s * (W / 2.0 - 0.04), top + 0.175, bed_z), false, 0.5)
+			add_box(parent, Vector3(W, 0.35, 0.08), color, Vector3(0, top + 0.175, bz + 0.04), false, 0.5)
+			add_box(parent, Vector3(W - 0.3, 0.06, 0.12), Color(1.0, 0.6, 0.1), Vector3(0, top + hc + 0.03, cz + 0.4), true)
+		"sport":
+			add_box(parent, Vector3(W - 0.2, 0.05, 0.25), dark, Vector3(0, top + 0.05, bz + 0.22))
+			for s in [-1.0, 1.0]:
+				add_box(parent, Vector3(0.03, 0.12, 0.5), dark, Vector3(s * (W / 2.0 + 0.01), top - 0.2, 0.3))
+		"beast":
+			var red = Color(0.9, 0.05, 0.05)
+			add_box(parent, Vector3(0.5, 0.12, 0.6), dark, Vector3(0, top + 0.06, fz - 0.8))
+			for x in [-0.2, 0.2]:
+				add_box(parent, Vector3(0.16, 0.02, L + 0.02), red, Vector3(x, top + 0.01, 0))
+				add_box(parent, Vector3(0.16, 0.02, cl), red, Vector3(x, top + hc + 0.01, cz))
+			for x in [-0.5, 0.5]:
+				add_box(parent, Vector3(0.08, 0.3, 0.08), dark, Vector3(x, top + 0.15, bz + 0.35))
+			add_box(parent, Vector3(W, 0.06, 0.42), dark, Vector3(0, top + 0.32, bz + 0.3))
+			for s in [-1.0, 1.0]:
+				add_box(parent, Vector3(0.06, 0.12, L * 0.6), red, Vector3(s * (W / 2.0 + 0.02), -0.25, 0))
+		"super":
+			for x in [-0.6, 0.6]:
+				add_box(parent, Vector3(0.08, 0.35, 0.08), dark, Vector3(x, top + 0.17, bz + 0.35))
+			add_box(parent, Vector3(W, 0.05, 0.45), dark, Vector3(0, top + 0.36, bz + 0.3))
+			for s in [-1.0, 1.0]:
+				add_box(parent, Vector3(0.04, 0.2, 0.6), dark, Vector3(s * (W / 2.0), top - 0.15, -0.6))
+			add_box(parent, Vector3(0.1, 0.02, L + 0.02), Color(0.1, 0.1, 0.1), Vector3(0, top + 0.01, 0))
 
 
-func add_wheel_look(wheel):
-	var side = sign(wheel.position.x)
-	var r = wheel.wheel_radius
-	add_cylinder(wheel, r, 0.34, Color(0.04, 0.04, 0.04), Vector3(0.1 * side, 0, 0), Vector3(0, 0, 90))
-	add_cylinder(wheel, r * 0.55, 0.36, stripe_color, Vector3(0.1 * side, 0, 0), Vector3(0, 0, 90), 0.7)
+# A triangle-shaped glass piece (used for sloped windscreens)
+func add_wedge(parent: Node3D, length: float, height: float, width: float, pos: Vector3, apex: float, color: Color):
+	var part = MeshInstance3D.new()
+	var shape = PrismMesh.new()
+	shape.size = Vector3(length, height, width)
+	shape.left_to_right = apex
+	shape.material = make_material(color)
+	part.mesh = shape
+	part.position = pos
+	part.rotation_degrees = Vector3(0, 90, 0)
+	parent.add_child(part)
 
 
-# ---------- Helpers that build shapes ----------
-
-func add_box(size: Vector3, color: Color, pos: Vector3, glow := false, metal := 0.0) -> MeshInstance3D:
+func add_box(parent: Node3D, size: Vector3, color: Color, pos: Vector3, glow := false, metal := 0.0) -> MeshInstance3D:
 	var part = MeshInstance3D.new()
 	var shape = BoxMesh.new()
 	shape.size = size
@@ -239,7 +351,7 @@ func add_box(size: Vector3, color: Color, pos: Vector3, glow := false, metal := 
 	shape.material = mat
 	part.mesh = shape
 	part.position = pos
-	add_child(part)
+	parent.add_child(part)
 	return part
 
 
