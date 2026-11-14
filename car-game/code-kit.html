@@ -39,16 +39,16 @@ pre { margin: 0; max-height: 420px; overflow: auto; background: var(--code-bg); 
 <main>
   <div>
     <h1>Car Game Code Kit</h1>
-    <p class="lead">Two scripts for your Godot game: a city with roads, buildings, people, jobs and a car shop, plus 6 cars you can buy with the money you earn.</p>
+    <p class="lead">One script for your whole Godot game: a city with roads, buildings, people, jobs and a car shop, plus 6 cars you can buy with the money you earn.</p>
   </div>
   <img class="hero" src="aerial.png" alt="Preview drawing of the city: grid of tall buildings with windows, roads with white dashes, green parks with trees, and glowing job lights.">
   <section>
     <h2>Steps</h2>
     <ol class="steps">
-      <li>In Godot, click <b>car.gd</b> in the list on the left of the Script tab. Click in the code, press <kbd>Ctrl</kbd>+<kbd>A</kbd>, then <kbd>Delete</kbd>. Click <b>Copy car.gd</b> below and paste with <kbd>Ctrl</kbd>+<kbd>V</kbd>.</li>
+      <li>In the <b>Scene</b> panel on the left, right-click <b>Car</b> → <b>Delete Node(s)</b> → <b>OK</b>. The script makes a new car by itself.</li>
+      <li>Right-click <b>World</b> → <b>Attach Script</b>. If it says World already has a script, that's fine: it opens it. Otherwise click <b>Create</b>.</li>
+      <li>Click in the code, press <kbd>Ctrl</kbd>+<kbd>A</kbd>, then <kbd>Delete</kbd>. Click <b>Copy game code</b> below and paste with <kbd>Ctrl</kbd>+<kbd>V</kbd>.</li>
       <li>Click <b>Edit → Indentation → Convert Indent to Tabs</b>, then <kbd>Ctrl</kbd>+<kbd>S</kbd>.</li>
-      <li>Click the <b>3D</b> tab at the top. Right-click <b>World</b> → <b>Attach Script</b> → <b>Create</b>. Godot names it <b>world.gd</b>, which is fine.</li>
-      <li>Delete everything in the new script, click <b>Copy city.gd</b> below and paste it in. Convert Indent to Tabs again, then <kbd>Ctrl</kbd>+<kbd>S</kbd>.</li>
       <li>Press <kbd>F6</kbd>, click <b>Input</b> in the game window, and drive.</li>
     </ol>
   </section>
@@ -61,394 +61,17 @@ pre { margin: 0; max-height: 420px; overflow: auto; background: var(--code-bg); 
     <p class="note">Blue lights are job centers. Stop inside one to get work. Follow the yellow arrow: pick up at the yellow light, stop at the green light, get paid. Faster delivery pays more. The purple light is the car shop: stop inside it and press a number. Your money and cars save automatically.</p>
   </section>
   <section class="file">
-    <header><div><b>car.gd</b><span>Goes on the Car. 6 car models, nitro, drift, camera, engine sound.</span></div>
-      <button class="copy" type="button" data-target="car-code" id="copy-car">Copy car.gd</button></header>
-    <pre id="car-code">extends VehicleBody3D
-# PLAYER CAR
-# Controls: Up = gas, Down = brake/reverse, Left/Right = steer
-#           Shift = NITRO, Space = handbrake (drift), R = reset
-
-var models = [
-	{&quot;name&quot;: &quot;Starter Hatch&quot;, &quot;price&quot;: 0, &quot;power&quot;: 2400.0, &quot;top&quot;: 150.0, &quot;steer&quot;: 0.45,
-		&quot;style&quot;: &quot;hatch&quot;, &quot;color&quot;: Color(0.15, 0.35, 0.8), &quot;pitch&quot;: 1.15},
-	{&quot;name&quot;: &quot;City Taxi&quot;, &quot;price&quot;: 800, &quot;power&quot;: 2900.0, &quot;top&quot;: 170.0, &quot;steer&quot;: 0.42,
-		&quot;style&quot;: &quot;taxi&quot;, &quot;color&quot;: Color(1.0, 0.78, 0.05), &quot;pitch&quot;: 1.0},
-	{&quot;name&quot;: &quot;Pickup Truck&quot;, &quot;price&quot;: 1800, &quot;power&quot;: 3400.0, &quot;top&quot;: 175.0, &quot;steer&quot;: 0.4,
-		&quot;style&quot;: &quot;truck&quot;, &quot;color&quot;: Color(0.2, 0.42, 0.25), &quot;pitch&quot;: 0.75},
-	{&quot;name&quot;: &quot;Sports GT&quot;, &quot;price&quot;: 4000, &quot;power&quot;: 4300.0, &quot;top&quot;: 235.0, &quot;steer&quot;: 0.38,
-		&quot;style&quot;: &quot;sport&quot;, &quot;color&quot;: Color(0.85, 0.08, 0.08), &quot;pitch&quot;: 1.2},
-	{&quot;name&quot;: &quot;The Beast&quot;, &quot;price&quot;: 8000, &quot;power&quot;: 5300.0, &quot;top&quot;: 265.0, &quot;steer&quot;: 0.36,
-		&quot;style&quot;: &quot;beast&quot;, &quot;color&quot;: Color(0.06, 0.06, 0.07), &quot;pitch&quot;: 0.9},
-	{&quot;name&quot;: &quot;Hyper X&quot;, &quot;price&quot;: 15000, &quot;power&quot;: 6600.0, &quot;top&quot;: 320.0, &quot;steer&quot;: 0.34,
-		&quot;style&quot;: &quot;super&quot;, &quot;color&quot;: Color(0.93, 0.93, 0.95), &quot;pitch&quot;: 1.35},
-]
-
-@export var engine_sound := true
-
-var model_index := 0
-var engine_power := 2400.0
-var top_speed_kmh := 150.0
-var max_steer := 0.45
-var nitro_power := 1.8
-var pitch_scale := 1.0
-
-var start_transform: Transform3D
-var wheels: Array = []
-var rear_wheels: Array = []
-var wheel_parts: Array = []
-var flames: Array = []
-var look: Node3D
-var nitro := 100.0
-var boosting := false
-var speed_label: Label
-var nitro_bar: ProgressBar
-var cam: Camera3D
-var engine_playback: AudioStreamGeneratorPlayback
-var engine_phase := 0.0
-var engine_pitch := 50.0
-
-
-func _ready():
-	can_sleep = false
-	start_transform = global_transform
-	center_of_mass_mode = RigidBody3D.CENTER_OF_MASS_MODE_CUSTOM
-	center_of_mass = Vector3(0, -0.5, 0)
-	for wheel in get_children():
-		if wheel is VehicleWheel3D:
-			wheel.suspension_stiffness = 45.0
-			wheel.wheel_rest_length = 0.3
-			wheel.suspension_travel = 0.3
-			wheel.damping_compression = 3.0
-			wheel.damping_relaxation = 4.0
-			wheel.wheel_friction_slip = 4.0
-			wheels.append(wheel)
-			if wheel.use_as_traction:
-				rear_wheels.append(wheel)
-	var old_body = get_node_or_null(&quot;Body&quot;)
-	if old_body:
-		old_body.visible = false
-	make_hud()
-	cam = get_node_or_null(&quot;Camera3D&quot;)
-	if cam:
-		cam.top_level = true
-	if engine_sound:
-		setup_engine_sound()
-	apply_model(0)
-
-
-# Switch to one of the cars in &quot;models&quot;
-func apply_model(index: int):
-	model_index = index
-	var m = models[index]
-	engine_power = m[&quot;power&quot;]
-	top_speed_kmh = m[&quot;top&quot;]
-	max_steer = m[&quot;steer&quot;]
-	pitch_scale = m[&quot;pitch&quot;]
-	if look:
-		look.queue_free()
-	for p in wheel_parts:
-		p.queue_free()
-	wheel_parts.clear()
-	flames.clear()
-	look = Node3D.new()
-	add_child(look)
-	build_body(look, m[&quot;style&quot;], m[&quot;color&quot;])
-	var back_z = -style_dims(m[&quot;style&quot;])[&quot;L&quot;] / 2.0
-	for x in [-0.4, 0.4]:
-		var flame = add_box(look, Vector3(0.12, 0.12, 0.45), Color(0.2, 0.5, 1.0),
-			Vector3(x, -0.22, back_z - 0.35), true)
-		flame.visible = false
-		flames.append(flame)
-	var rim = Color(0.8, 0.8, 0.85)
-	if m[&quot;style&quot;] == &quot;beast&quot;:
-		rim = Color(0.9, 0.05, 0.05)
-	for wheel in wheels:
-		var side = sign(wheel.position.x)
-		var r = wheel.wheel_radius
-		wheel_parts.append(add_cylinder(wheel, r, 0.34, Color(0.04, 0.04, 0.04),
-			Vector3(0.1 * side, 0, 0), Vector3(0, 0, 90)))
-		wheel_parts.append(add_cylinder(wheel, r * 0.55, 0.36, rim,
-			Vector3(0.1 * side, 0, 0), Vector3(0, 0, 90), 0.8))
-
-
-func _physics_process(delta):
-	if global_position.y &lt; -10 or Input.is_key_pressed(KEY_R):
-		reset_car()
-		return
-
-	var throttle = Input.get_axis(&quot;ui_down&quot;, &quot;ui_up&quot;)
-	var turn = Input.get_axis(&quot;ui_right&quot;, &quot;ui_left&quot;)
-	var forward_speed = linear_velocity.dot(global_transform.basis.z)
-	var speed = linear_velocity.length()
-	var kmh = abs(forward_speed) * 3.6
-
-	boosting = Input.is_key_pressed(KEY_SHIFT) and nitro &gt; 0.0 and throttle &gt; 0.0
-	if boosting:
-		nitro = max(nitro - 30.0 * delta, 0.0)
-	else:
-		nitro = min(nitro + 10.0 * delta, 100.0)
-	for flame in flames:
-		flame.visible = boosting
-
-	var power = engine_power
-	var top = top_speed_kmh
-	if boosting:
-		power *= nitro_power
-		top *= 1.3
-	if throttle &gt; 0.0 and forward_speed &gt; 0.0:
-		power *= clamp(1.0 - kmh / top, 0.0, 1.0)
-	engine_force = throttle * power
-
-	var steer_limit = lerp(max_steer, 0.1, clamp(kmh / 200.0, 0.0, 1.0))
-	steering = move_toward(steering, turn * steer_limit, delta * 3.0)
-
-	var drifting = Input.is_action_pressed(&quot;ui_accept&quot;)
-	for wheel in rear_wheels:
-		wheel.wheel_friction_slip = 1.2 if drifting else 4.0
-		wheel.brake = 3.0 if drifting else 0.0
-
-	apply_central_force(Vector3.DOWN * speed * speed * 0.8)
-
-	speed_label.text = str(int(kmh)) + &quot; km/h&quot;
-	nitro_bar.value = nitro
-
-
-func _process(delta):
-	update_camera(delta)
-	if engine_playback:
-		update_engine_sound(delta)
-
-
-func reset_car():
-	global_transform = start_transform
-	linear_velocity = Vector3.ZERO
-	angular_velocity = Vector3.ZERO
-	nitro = 100.0
-
-
-func update_camera(delta):
-	if cam == null:
-		return
-	var fwd = global_transform.basis.z
-	fwd.y = 0.0
-	if fwd.length() &lt; 0.1:
-		fwd = Vector3.FORWARD
-	fwd = fwd.normalized()
-	var target = global_position - fwd * 7.5 + Vector3.UP * 3.0
-	cam.global_position = cam.global_position.lerp(target, clamp(delta * 5.0, 0.0, 1.0))
-	cam.look_at(global_position + fwd * 3.0 + Vector3.UP * 0.8, Vector3.UP)
-	var want_fov = 70.0 + linear_velocity.length() * 0.35
-	if boosting:
-		want_fov += 12.0
-	cam.fov = lerp(cam.fov, min(want_fov, 105.0), clamp(delta * 3.0, 0.0, 1.0))
-
-
-func make_hud():
-	var layer = CanvasLayer.new()
-	add_child(layer)
-	speed_label = Label.new()
-	speed_label.add_theme_font_size_override(&quot;font_size&quot;, 56)
-	speed_label.add_theme_color_override(&quot;font_outline_color&quot;, Color.BLACK)
-	speed_label.add_theme_constant_override(&quot;outline_size&quot;, 10)
-	speed_label.position = Vector2(30, 20)
-	layer.add_child(speed_label)
-	var nitro_text = Label.new()
-	nitro_text.text = &quot;NITRO (Shift)&quot;
-	nitro_text.add_theme_font_size_override(&quot;font_size&quot;, 20)
-	nitro_text.add_theme_color_override(&quot;font_outline_color&quot;, Color.BLACK)
-	nitro_text.add_theme_constant_override(&quot;outline_size&quot;, 6)
-	nitro_text.position = Vector2(32, 100)
-	layer.add_child(nitro_text)
-	nitro_bar = ProgressBar.new()
-	nitro_bar.min_value = 0.0
-	nitro_bar.max_value = 100.0
-	nitro_bar.show_percentage = false
-	nitro_bar.position = Vector2(30, 130)
-	nitro_bar.size = Vector2(260, 22)
-	nitro_bar.modulate = Color(0.4, 0.8, 1.0)
-	layer.add_child(nitro_bar)
-
-
-func setup_engine_sound():
-	var gen = AudioStreamGenerator.new()
-	gen.mix_rate = 22050.0
-	gen.buffer_length = 0.1
-	var player = AudioStreamPlayer.new()
-	player.stream = gen
-	player.volume_db = -10.0
-	add_child(player)
-	player.play()
-	engine_playback = player.get_stream_playback()
-
-
-func update_engine_sound(delta):
-	var kmh = linear_velocity.length() * 3.6
-	var gear_rev = fmod(kmh, 55.0) / 55.0
-	var target = (45.0 + gear_rev * 110.0 + min(kmh, 220.0) * 0.15) * pitch_scale
-	if boosting:
-		target += 25.0
-	engine_pitch = lerp(engine_pitch, target, clamp(delta * 6.0, 0.0, 1.0))
-	var frames = engine_playback.get_frames_available()
-	for _i in frames:
-		engine_phase = fmod(engine_phase + engine_pitch / 22050.0, 1.0)
-		var s = sin(engine_phase * TAU) * 0.5 + (engine_phase * 2.0 - 1.0) * 0.3
-		engine_playback.push_frame(Vector2(s, s) * 0.4)
-
-
-# ---------- CAR LOOKS ----------
-# L = length, W = width, hb = lower body height, hc = cabin height,
-# cl = cabin length, cz = cabin position, ws = windscreen slope, rs = rear window slope
-func style_dims(style: String) -&gt; Dictionary:
-	match style:
-		&quot;hatch&quot;:
-			return {&quot;L&quot;: 3.5, &quot;W&quot;: 1.7, &quot;hb&quot;: 0.58, &quot;hc&quot;: 0.5, &quot;cl&quot;: 1.5, &quot;cz&quot;: -0.45, &quot;ws&quot;: 0.6, &quot;rs&quot;: 0.15}
-		&quot;taxi&quot;:
-			return {&quot;L&quot;: 3.9, &quot;W&quot;: 1.74, &quot;hb&quot;: 0.55, &quot;hc&quot;: 0.46, &quot;cl&quot;: 1.6, &quot;cz&quot;: -0.2, &quot;ws&quot;: 0.7, &quot;rs&quot;: 0.55}
-		&quot;truck&quot;:
-			return {&quot;L&quot;: 4.1, &quot;W&quot;: 1.84, &quot;hb&quot;: 0.68, &quot;hc&quot;: 0.6, &quot;cl&quot;: 1.3, &quot;cz&quot;: 0.55, &quot;ws&quot;: 0.45, &quot;rs&quot;: 0.0}
-		&quot;sport&quot;:
-			return {&quot;L&quot;: 3.9, &quot;W&quot;: 1.8, &quot;hb&quot;: 0.5, &quot;hc&quot;: 0.38, &quot;cl&quot;: 1.3, &quot;cz&quot;: -0.35, &quot;ws&quot;: 0.85, &quot;rs&quot;: 0.7}
-		&quot;beast&quot;:
-			return {&quot;L&quot;: 3.6, &quot;W&quot;: 1.75, &quot;hb&quot;: 0.6, &quot;hc&quot;: 0.38, &quot;cl&quot;: 1.3, &quot;cz&quot;: -0.35, &quot;ws&quot;: 0.4, &quot;rs&quot;: 0.3}
-		_:
-			return {&quot;L&quot;: 4.0, &quot;W&quot;: 1.9, &quot;hb&quot;: 0.45, &quot;hc&quot;: 0.33, &quot;cl&quot;: 1.2, &quot;cz&quot;: -0.2, &quot;ws&quot;: 1.0, &quot;rs&quot;: 0.8}
-
-
-func build_body(parent: Node3D, style: String, color: Color):
-	var d = style_dims(style)
-	var L = d[&quot;L&quot;]
-	var W = d[&quot;W&quot;]
-	var hb = d[&quot;hb&quot;]
-	var hc = d[&quot;hc&quot;]
-	var cl = d[&quot;cl&quot;]
-	var cz = d[&quot;cz&quot;]
-	var glass = Color(0.05, 0.08, 0.13)
-	var dark = Color(0.03, 0.03, 0.03)
-	var chrome = Color(0.8, 0.8, 0.85)
-	var top = -0.3 + hb
-	var fz = L / 2.0
-	var bz = -L / 2.0
-	var cab_front = cz + cl / 2.0
-	var cab_back = cz - cl / 2.0
-
-	add_box(parent, Vector3(W, hb, L), color, Vector3(0, -0.3 + hb / 2.0, 0), false, 0.5)
-	add_box(parent, Vector3(W - 0.12, hc, cl), color, Vector3(0, top + hc / 2.0, cz), false, 0.5)
-	add_box(parent, Vector3(W - 0.1, hc * 0.62, cl - 0.25), glass, Vector3(0, top + hc * 0.48, cz))
-	add_wedge(parent, d[&quot;ws&quot;], hc, W - 0.2, Vector3(0, top + hc / 2.0, cab_front + d[&quot;ws&quot;] / 2.0), 1.0, glass)
-	if d[&quot;rs&quot;] &gt; 0.01:
-		add_wedge(parent, d[&quot;rs&quot;], hc, W - 0.2, Vector3(0, top + hc / 2.0, cab_back - d[&quot;rs&quot;] / 2.0), 0.0, glass)
-
-	add_box(parent, Vector3(W + 0.04, 0.16, 0.14), dark, Vector3(0, -0.24, fz))
-	add_box(parent, Vector3(W + 0.04, 0.16, 0.14), dark, Vector3(0, -0.24, bz))
-	add_box(parent, Vector3(W * 0.5, 0.14, 0.03), dark, Vector3(0, top - 0.15, fz + 0.01))
-	add_box(parent, Vector3(W * 0.5, 0.025, 0.035), chrome, Vector3(0, top - 0.07, fz + 0.012), false, 0.9)
-	for s in [-1.0, 1.0]:
-		var x = s * (W / 2.0 - 0.28)
-		add_box(parent, Vector3(0.36, 0.11, 0.04), Color(0.85, 0.92, 1.0), Vector3(x, top - 0.1, fz + 0.01), true)
-		add_box(parent, Vector3(0.36, 0.1, 0.04), Color(1.0, 0.05, 0.02), Vector3(x, top - 0.1, bz - 0.01), true)
-		add_box(parent, Vector3(0.16, 0.09, 0.07), color, Vector3(s * (W / 2.0 + 0.05), top + 0.12, cab_front - 0.05))
-		add_box(parent, Vector3(0.02, 0.06, L * 0.7), dark, Vector3(s * (W / 2.0 + 0.005), -0.12, 0))
-		add_box(parent, Vector3(0.02, hb * 0.75, 0.02), dark, Vector3(s * (W / 2.0 + 0.005), -0.3 + hb / 2.0, cz + cl * 0.1))
-	add_box(parent, Vector3(0.42, 0.12, 0.02), Color(0.95, 0.95, 0.9), Vector3(0, -0.16, fz + 0.08))
-	add_box(parent, Vector3(0.42, 0.12, 0.02), Color(0.95, 0.95, 0.9), Vector3(0, -0.16, bz - 0.08))
-
-	match style:
-		&quot;taxi&quot;:
-			add_box(parent, Vector3(0.6, 0.18, 0.25), Color(1.0, 0.95, 0.7), Vector3(0, top + hc + 0.09, cz), true)
-			for i in range(8):
-				if i % 2 == 0:
-					for s in [-1.0, 1.0]:
-						add_box(parent, Vector3(0.02, 0.08, 0.25), dark, Vector3(s * (W / 2.0 + 0.006), top - 0.18, -1.0 + i * 0.25))
-		&quot;truck&quot;:
-			var bed_len = cab_back - bz - 0.1
-			var bed_z = (cab_back + bz) / 2.0 - 0.05
-			add_box(parent, Vector3(W - 0.1, 0.05, bed_len), dark, Vector3(0, top + 0.02, bed_z))
-			for s in [-1.0, 1.0]:
-				add_box(parent, Vector3(0.08, 0.35, bed_len), color, Vector3(s * (W / 2.0 - 0.04), top + 0.175, bed_z), false, 0.5)
-			add_box(parent, Vector3(W, 0.35, 0.08), color, Vector3(0, top + 0.175, bz + 0.04), false, 0.5)
-			add_box(parent, Vector3(W - 0.3, 0.06, 0.12), Color(1.0, 0.6, 0.1), Vector3(0, top + hc + 0.03, cz + 0.4), true)
-		&quot;sport&quot;:
-			add_box(parent, Vector3(W - 0.2, 0.05, 0.25), dark, Vector3(0, top + 0.05, bz + 0.22))
-			for s in [-1.0, 1.0]:
-				add_box(parent, Vector3(0.03, 0.12, 0.5), dark, Vector3(s * (W / 2.0 + 0.01), top - 0.2, 0.3))
-		&quot;beast&quot;:
-			var red = Color(0.9, 0.05, 0.05)
-			add_box(parent, Vector3(0.5, 0.12, 0.6), dark, Vector3(0, top + 0.06, fz - 0.8))
-			for x in [-0.2, 0.2]:
-				add_box(parent, Vector3(0.16, 0.02, L + 0.02), red, Vector3(x, top + 0.01, 0))
-				add_box(parent, Vector3(0.16, 0.02, cl), red, Vector3(x, top + hc + 0.01, cz))
-			for x in [-0.5, 0.5]:
-				add_box(parent, Vector3(0.08, 0.3, 0.08), dark, Vector3(x, top + 0.15, bz + 0.35))
-			add_box(parent, Vector3(W, 0.06, 0.42), dark, Vector3(0, top + 0.32, bz + 0.3))
-			for s in [-1.0, 1.0]:
-				add_box(parent, Vector3(0.06, 0.12, L * 0.6), red, Vector3(s * (W / 2.0 + 0.02), -0.25, 0))
-		&quot;super&quot;:
-			for x in [-0.6, 0.6]:
-				add_box(parent, Vector3(0.08, 0.35, 0.08), dark, Vector3(x, top + 0.17, bz + 0.35))
-			add_box(parent, Vector3(W, 0.05, 0.45), dark, Vector3(0, top + 0.36, bz + 0.3))
-			for s in [-1.0, 1.0]:
-				add_box(parent, Vector3(0.04, 0.2, 0.6), dark, Vector3(s * (W / 2.0), top - 0.15, -0.6))
-			add_box(parent, Vector3(0.1, 0.02, L + 0.02), Color(0.1, 0.1, 0.1), Vector3(0, top + 0.01, 0))
-
-
-# A triangle-shaped glass piece (used for sloped windscreens)
-func add_wedge(parent: Node3D, length: float, height: float, width: float, pos: Vector3, apex: float, color: Color):
-	var part = MeshInstance3D.new()
-	var shape = PrismMesh.new()
-	shape.size = Vector3(length, height, width)
-	shape.left_to_right = apex
-	shape.material = make_material(color)
-	part.mesh = shape
-	part.position = pos
-	part.rotation_degrees = Vector3(0, 90, 0)
-	parent.add_child(part)
-
-
-func add_box(parent: Node3D, size: Vector3, color: Color, pos: Vector3, glow := false, metal := 0.0) -&gt; MeshInstance3D:
-	var part = MeshInstance3D.new()
-	var shape = BoxMesh.new()
-	shape.size = size
-	var mat = make_material(color, metal)
-	if glow:
-		mat.emission_enabled = true
-		mat.emission = color
-		mat.emission_energy_multiplier = 3.0
-	shape.material = mat
-	part.mesh = shape
-	part.position = pos
-	parent.add_child(part)
-	return part
-
-
-func add_cylinder(parent: Node, radius: float, height: float, color: Color, pos: Vector3, rot: Vector3, metal := 0.0) -&gt; MeshInstance3D:
-	var part = MeshInstance3D.new()
-	var shape = CylinderMesh.new()
-	shape.top_radius = radius
-	shape.bottom_radius = radius
-	shape.height = height
-	shape.material = make_material(color, metal)
-	part.mesh = shape
-	part.position = pos
-	part.rotation_degrees = rot
-	parent.add_child(part)
-	return part
-
-
-func make_material(color: Color, metal := 0.0) -&gt; StandardMaterial3D:
-	var mat = StandardMaterial3D.new()
-	mat.albedo_color = color
-	mat.metallic = metal
-	mat.roughness = 0.35
-	return mat
-</pre>
-  </section>
-  <section class="file">
-    <header><div><b>city.gd</b><span>Goes on World. Roads, buildings, highway, people, jobs, shop, saving.</span></div>
-      <button class="copy" type="button" data-target="city-code" id="copy-city">Copy city.gd</button></header>
-    <pre id="city-code">extends Node3D
-# THE CITY: roads, buildings, people, jobs, car shop, money.
-# J = get a job (or drive into a blue JOBS light and stop)
-# Stop inside the purple CAR SHOP light, then press 1-6 to buy or switch cars.
+    <header><div><b>game.gd</b><span>The whole game in one script. Goes on World.</span></div>
+      <button class="copy" type="button" data-target="game-code" id="copy-game">Copy game code</button></header>
+    <pre id="game-code">extends Node3D
+# ===================================================================
+#  CAR CITY - the whole game in one script. Put this on the World node.
+#  It builds the city, the people, the jobs, the car shop AND your car.
+#
+#  Controls: Up = gas, Down = brake/reverse, Left/Right = steer
+#            Shift = NITRO, Space = drift, R = reset
+#            J = get a job, 1-6 = buy cars when parked in the CAR SHOP light
+# ===================================================================
 
 const BLOCK := 70.0          # distance between roads
 const ROAD := 12.0           # road width
@@ -493,8 +116,8 @@ var shop_text: Label
 
 func _ready():
 	rng.randomize()
-	car = get_node_or_null(&quot;Car&quot;)
 	half = BLOCKS * BLOCK / 2.0
+	spawn_car()
 	setup_ground()
 	make_building_materials()
 	build_roads()
@@ -531,6 +154,35 @@ func _input(event):
 			var index = event.keycode - KEY_1
 			if index &gt;= 0 and index &lt; car.models.size():
 				buy_or_select(index)
+
+
+# Builds the player&#x27;s car: body, 4 wheels and a camera
+func spawn_car():
+	var old_car = get_node_or_null(&quot;Car&quot;)
+	if old_car:
+		old_car.queue_free()
+	car = PlayerCar.new()
+	car.name = &quot;PlayerCar&quot;
+	car.mass = 500.0
+	car.position = Vector3(0, 3, 0)
+	var col = CollisionShape3D.new()
+	var shape = BoxShape3D.new()
+	shape.size = Vector3(1.6, 0.6, 3.2)
+	col.shape = shape
+	car.add_child(col)
+	for spot in [Vector3(0.8, 0, 1.3), Vector3(-0.8, 0, 1.3), Vector3(0.8, 0, -1.3), Vector3(-0.8, 0, -1.3)]:
+		var wheel = VehicleWheel3D.new()
+		wheel.position = spot
+		wheel.wheel_radius = 0.4
+		wheel.use_as_steering = spot.z &gt; 0.0
+		wheel.use_as_traction = spot.z &lt; 0.0
+		car.add_child(wheel)
+	var camera = Camera3D.new()
+	camera.name = &quot;Camera3D&quot;
+	camera.position = Vector3(0, 3, -7)
+	camera.current = true
+	car.add_child(camera)
+	add_child(car)
 
 
 # ================= BUILDING THE WORLD =================
@@ -1119,6 +771,388 @@ func load_game():
 		money = cf.get_value(&quot;game&quot;, &quot;money&quot;, 0)
 		owned = cf.get_value(&quot;game&quot;, &quot;owned&quot;, [0])
 		current_model = cf.get_value(&quot;game&quot;, &quot;model&quot;, 0)
+
+
+# ===================================================================
+#  THE PLAYER CAR (a class inside this script)
+# ===================================================================
+class PlayerCar extends VehicleBody3D:
+	# PLAYER CAR
+	# Controls: Up = gas, Down = brake/reverse, Left/Right = steer
+	#           Shift = NITRO, Space = handbrake (drift), R = reset
+
+	var models = [
+		{&quot;name&quot;: &quot;Starter Hatch&quot;, &quot;price&quot;: 0, &quot;power&quot;: 2400.0, &quot;top&quot;: 150.0, &quot;steer&quot;: 0.45,
+			&quot;style&quot;: &quot;hatch&quot;, &quot;color&quot;: Color(0.15, 0.35, 0.8), &quot;pitch&quot;: 1.15},
+		{&quot;name&quot;: &quot;City Taxi&quot;, &quot;price&quot;: 800, &quot;power&quot;: 2900.0, &quot;top&quot;: 170.0, &quot;steer&quot;: 0.42,
+			&quot;style&quot;: &quot;taxi&quot;, &quot;color&quot;: Color(1.0, 0.78, 0.05), &quot;pitch&quot;: 1.0},
+		{&quot;name&quot;: &quot;Pickup Truck&quot;, &quot;price&quot;: 1800, &quot;power&quot;: 3400.0, &quot;top&quot;: 175.0, &quot;steer&quot;: 0.4,
+			&quot;style&quot;: &quot;truck&quot;, &quot;color&quot;: Color(0.2, 0.42, 0.25), &quot;pitch&quot;: 0.75},
+		{&quot;name&quot;: &quot;Sports GT&quot;, &quot;price&quot;: 4000, &quot;power&quot;: 4300.0, &quot;top&quot;: 235.0, &quot;steer&quot;: 0.38,
+			&quot;style&quot;: &quot;sport&quot;, &quot;color&quot;: Color(0.85, 0.08, 0.08), &quot;pitch&quot;: 1.2},
+		{&quot;name&quot;: &quot;The Beast&quot;, &quot;price&quot;: 8000, &quot;power&quot;: 5300.0, &quot;top&quot;: 265.0, &quot;steer&quot;: 0.36,
+			&quot;style&quot;: &quot;beast&quot;, &quot;color&quot;: Color(0.06, 0.06, 0.07), &quot;pitch&quot;: 0.9},
+		{&quot;name&quot;: &quot;Hyper X&quot;, &quot;price&quot;: 15000, &quot;power&quot;: 6600.0, &quot;top&quot;: 320.0, &quot;steer&quot;: 0.34,
+			&quot;style&quot;: &quot;super&quot;, &quot;color&quot;: Color(0.93, 0.93, 0.95), &quot;pitch&quot;: 1.35},
+	]
+
+	var engine_sound := true
+
+	var model_index := 0
+	var engine_power := 2400.0
+	var top_speed_kmh := 150.0
+	var max_steer := 0.45
+	var nitro_power := 1.8
+	var pitch_scale := 1.0
+
+	var start_transform: Transform3D
+	var wheels: Array = []
+	var rear_wheels: Array = []
+	var wheel_parts: Array = []
+	var flames: Array = []
+	var look: Node3D
+	var nitro := 100.0
+	var boosting := false
+	var speed_label: Label
+	var nitro_bar: ProgressBar
+	var cam: Camera3D
+	var engine_playback: AudioStreamGeneratorPlayback
+	var engine_phase := 0.0
+	var engine_pitch := 50.0
+
+
+	func _ready():
+		can_sleep = false
+		start_transform = global_transform
+		center_of_mass_mode = RigidBody3D.CENTER_OF_MASS_MODE_CUSTOM
+		center_of_mass = Vector3(0, -0.5, 0)
+		for wheel in get_children():
+			if wheel is VehicleWheel3D:
+				wheel.suspension_stiffness = 45.0
+				wheel.wheel_rest_length = 0.3
+				wheel.suspension_travel = 0.3
+				wheel.damping_compression = 3.0
+				wheel.damping_relaxation = 4.0
+				wheel.wheel_friction_slip = 4.0
+				wheels.append(wheel)
+				if wheel.use_as_traction:
+					rear_wheels.append(wheel)
+		var old_body = get_node_or_null(&quot;Body&quot;)
+		if old_body:
+			old_body.visible = false
+		make_hud()
+		cam = get_node_or_null(&quot;Camera3D&quot;)
+		if cam:
+			cam.top_level = true
+		if engine_sound:
+			setup_engine_sound()
+		apply_model(0)
+
+
+	# Switch to one of the cars in &quot;models&quot;
+	func apply_model(index: int):
+		model_index = index
+		var m = models[index]
+		engine_power = m[&quot;power&quot;]
+		top_speed_kmh = m[&quot;top&quot;]
+		max_steer = m[&quot;steer&quot;]
+		pitch_scale = m[&quot;pitch&quot;]
+		if look:
+			look.queue_free()
+		for p in wheel_parts:
+			p.queue_free()
+		wheel_parts.clear()
+		flames.clear()
+		look = Node3D.new()
+		add_child(look)
+		build_body(look, m[&quot;style&quot;], m[&quot;color&quot;])
+		var back_z = -style_dims(m[&quot;style&quot;])[&quot;L&quot;] / 2.0
+		for x in [-0.4, 0.4]:
+			var flame = add_box(look, Vector3(0.12, 0.12, 0.45), Color(0.2, 0.5, 1.0),
+				Vector3(x, -0.22, back_z - 0.35), true)
+			flame.visible = false
+			flames.append(flame)
+		var rim = Color(0.8, 0.8, 0.85)
+		if m[&quot;style&quot;] == &quot;beast&quot;:
+			rim = Color(0.9, 0.05, 0.05)
+		for wheel in wheels:
+			var side = sign(wheel.position.x)
+			var r = wheel.wheel_radius
+			wheel_parts.append(add_cylinder(wheel, r, 0.34, Color(0.04, 0.04, 0.04),
+				Vector3(0.1 * side, 0, 0), Vector3(0, 0, 90)))
+			wheel_parts.append(add_cylinder(wheel, r * 0.55, 0.36, rim,
+				Vector3(0.1 * side, 0, 0), Vector3(0, 0, 90), 0.8))
+
+
+	func _physics_process(delta):
+		if global_position.y &lt; -10 or Input.is_key_pressed(KEY_R):
+			reset_car()
+			return
+
+		var throttle = Input.get_axis(&quot;ui_down&quot;, &quot;ui_up&quot;)
+		var turn = Input.get_axis(&quot;ui_right&quot;, &quot;ui_left&quot;)
+		var forward_speed = linear_velocity.dot(global_transform.basis.z)
+		var speed = linear_velocity.length()
+		var kmh = abs(forward_speed) * 3.6
+
+		boosting = Input.is_key_pressed(KEY_SHIFT) and nitro &gt; 0.0 and throttle &gt; 0.0
+		if boosting:
+			nitro = max(nitro - 30.0 * delta, 0.0)
+		else:
+			nitro = min(nitro + 10.0 * delta, 100.0)
+		for flame in flames:
+			flame.visible = boosting
+
+		var power = engine_power
+		var top = top_speed_kmh
+		if boosting:
+			power *= nitro_power
+			top *= 1.3
+		if throttle &gt; 0.0 and forward_speed &gt; 0.0:
+			power *= clamp(1.0 - kmh / top, 0.0, 1.0)
+		engine_force = throttle * power
+
+		var steer_limit = lerp(max_steer, 0.1, clamp(kmh / 200.0, 0.0, 1.0))
+		steering = move_toward(steering, turn * steer_limit, delta * 3.0)
+
+		var drifting = Input.is_action_pressed(&quot;ui_accept&quot;)
+		for wheel in rear_wheels:
+			wheel.wheel_friction_slip = 1.2 if drifting else 4.0
+			wheel.brake = 3.0 if drifting else 0.0
+
+		apply_central_force(Vector3.DOWN * speed * speed * 0.8)
+
+		speed_label.text = str(int(kmh)) + &quot; km/h&quot;
+		nitro_bar.value = nitro
+
+
+	func _process(delta):
+		update_camera(delta)
+		if engine_playback:
+			update_engine_sound(delta)
+
+
+	func reset_car():
+		global_transform = start_transform
+		linear_velocity = Vector3.ZERO
+		angular_velocity = Vector3.ZERO
+		nitro = 100.0
+
+
+	func update_camera(delta):
+		if cam == null:
+			return
+		var fwd = global_transform.basis.z
+		fwd.y = 0.0
+		if fwd.length() &lt; 0.1:
+			fwd = Vector3.FORWARD
+		fwd = fwd.normalized()
+		var target = global_position - fwd * 7.5 + Vector3.UP * 3.0
+		cam.global_position = cam.global_position.lerp(target, clamp(delta * 5.0, 0.0, 1.0))
+		cam.look_at(global_position + fwd * 3.0 + Vector3.UP * 0.8, Vector3.UP)
+		var want_fov = 70.0 + linear_velocity.length() * 0.35
+		if boosting:
+			want_fov += 12.0
+		cam.fov = lerp(cam.fov, min(want_fov, 105.0), clamp(delta * 3.0, 0.0, 1.0))
+
+
+	func make_hud():
+		var layer = CanvasLayer.new()
+		add_child(layer)
+		speed_label = Label.new()
+		speed_label.add_theme_font_size_override(&quot;font_size&quot;, 56)
+		speed_label.add_theme_color_override(&quot;font_outline_color&quot;, Color.BLACK)
+		speed_label.add_theme_constant_override(&quot;outline_size&quot;, 10)
+		speed_label.position = Vector2(30, 20)
+		layer.add_child(speed_label)
+		var nitro_text = Label.new()
+		nitro_text.text = &quot;NITRO (Shift)&quot;
+		nitro_text.add_theme_font_size_override(&quot;font_size&quot;, 20)
+		nitro_text.add_theme_color_override(&quot;font_outline_color&quot;, Color.BLACK)
+		nitro_text.add_theme_constant_override(&quot;outline_size&quot;, 6)
+		nitro_text.position = Vector2(32, 100)
+		layer.add_child(nitro_text)
+		nitro_bar = ProgressBar.new()
+		nitro_bar.min_value = 0.0
+		nitro_bar.max_value = 100.0
+		nitro_bar.show_percentage = false
+		nitro_bar.position = Vector2(30, 130)
+		nitro_bar.size = Vector2(260, 22)
+		nitro_bar.modulate = Color(0.4, 0.8, 1.0)
+		layer.add_child(nitro_bar)
+
+
+	func setup_engine_sound():
+		var gen = AudioStreamGenerator.new()
+		gen.mix_rate = 22050.0
+		gen.buffer_length = 0.1
+		var player = AudioStreamPlayer.new()
+		player.stream = gen
+		player.volume_db = -10.0
+		add_child(player)
+		player.play()
+		engine_playback = player.get_stream_playback()
+
+
+	func update_engine_sound(delta):
+		var kmh = linear_velocity.length() * 3.6
+		var gear_rev = fmod(kmh, 55.0) / 55.0
+		var target = (45.0 + gear_rev * 110.0 + min(kmh, 220.0) * 0.15) * pitch_scale
+		if boosting:
+			target += 25.0
+		engine_pitch = lerp(engine_pitch, target, clamp(delta * 6.0, 0.0, 1.0))
+		var frames = engine_playback.get_frames_available()
+		for _i in frames:
+			engine_phase = fmod(engine_phase + engine_pitch / 22050.0, 1.0)
+			var s = sin(engine_phase * TAU) * 0.5 + (engine_phase * 2.0 - 1.0) * 0.3
+			engine_playback.push_frame(Vector2(s, s) * 0.4)
+
+
+	# ---------- CAR LOOKS ----------
+	# L = length, W = width, hb = lower body height, hc = cabin height,
+	# cl = cabin length, cz = cabin position, ws = windscreen slope, rs = rear window slope
+	func style_dims(style: String) -&gt; Dictionary:
+		match style:
+			&quot;hatch&quot;:
+				return {&quot;L&quot;: 3.5, &quot;W&quot;: 1.7, &quot;hb&quot;: 0.58, &quot;hc&quot;: 0.5, &quot;cl&quot;: 1.5, &quot;cz&quot;: -0.45, &quot;ws&quot;: 0.6, &quot;rs&quot;: 0.15}
+			&quot;taxi&quot;:
+				return {&quot;L&quot;: 3.9, &quot;W&quot;: 1.74, &quot;hb&quot;: 0.55, &quot;hc&quot;: 0.46, &quot;cl&quot;: 1.6, &quot;cz&quot;: -0.2, &quot;ws&quot;: 0.7, &quot;rs&quot;: 0.55}
+			&quot;truck&quot;:
+				return {&quot;L&quot;: 4.1, &quot;W&quot;: 1.84, &quot;hb&quot;: 0.68, &quot;hc&quot;: 0.6, &quot;cl&quot;: 1.3, &quot;cz&quot;: 0.55, &quot;ws&quot;: 0.45, &quot;rs&quot;: 0.0}
+			&quot;sport&quot;:
+				return {&quot;L&quot;: 3.9, &quot;W&quot;: 1.8, &quot;hb&quot;: 0.5, &quot;hc&quot;: 0.38, &quot;cl&quot;: 1.3, &quot;cz&quot;: -0.35, &quot;ws&quot;: 0.85, &quot;rs&quot;: 0.7}
+			&quot;beast&quot;:
+				return {&quot;L&quot;: 3.6, &quot;W&quot;: 1.75, &quot;hb&quot;: 0.6, &quot;hc&quot;: 0.38, &quot;cl&quot;: 1.3, &quot;cz&quot;: -0.35, &quot;ws&quot;: 0.4, &quot;rs&quot;: 0.3}
+			_:
+				return {&quot;L&quot;: 4.0, &quot;W&quot;: 1.9, &quot;hb&quot;: 0.45, &quot;hc&quot;: 0.33, &quot;cl&quot;: 1.2, &quot;cz&quot;: -0.2, &quot;ws&quot;: 1.0, &quot;rs&quot;: 0.8}
+
+
+	func build_body(parent: Node3D, style: String, color: Color):
+		var d = style_dims(style)
+		var L = d[&quot;L&quot;]
+		var W = d[&quot;W&quot;]
+		var hb = d[&quot;hb&quot;]
+		var hc = d[&quot;hc&quot;]
+		var cl = d[&quot;cl&quot;]
+		var cz = d[&quot;cz&quot;]
+		var glass = Color(0.05, 0.08, 0.13)
+		var dark = Color(0.03, 0.03, 0.03)
+		var chrome = Color(0.8, 0.8, 0.85)
+		var top = -0.3 + hb
+		var fz = L / 2.0
+		var bz = -L / 2.0
+		var cab_front = cz + cl / 2.0
+		var cab_back = cz - cl / 2.0
+
+		add_box(parent, Vector3(W, hb, L), color, Vector3(0, -0.3 + hb / 2.0, 0), false, 0.5)
+		add_box(parent, Vector3(W - 0.12, hc, cl), color, Vector3(0, top + hc / 2.0, cz), false, 0.5)
+		add_box(parent, Vector3(W - 0.1, hc * 0.62, cl - 0.25), glass, Vector3(0, top + hc * 0.48, cz))
+		add_wedge(parent, d[&quot;ws&quot;], hc, W - 0.2, Vector3(0, top + hc / 2.0, cab_front + d[&quot;ws&quot;] / 2.0), 1.0, glass)
+		if d[&quot;rs&quot;] &gt; 0.01:
+			add_wedge(parent, d[&quot;rs&quot;], hc, W - 0.2, Vector3(0, top + hc / 2.0, cab_back - d[&quot;rs&quot;] / 2.0), 0.0, glass)
+
+		add_box(parent, Vector3(W + 0.04, 0.16, 0.14), dark, Vector3(0, -0.24, fz))
+		add_box(parent, Vector3(W + 0.04, 0.16, 0.14), dark, Vector3(0, -0.24, bz))
+		add_box(parent, Vector3(W * 0.5, 0.14, 0.03), dark, Vector3(0, top - 0.15, fz + 0.01))
+		add_box(parent, Vector3(W * 0.5, 0.025, 0.035), chrome, Vector3(0, top - 0.07, fz + 0.012), false, 0.9)
+		for s in [-1.0, 1.0]:
+			var x = s * (W / 2.0 - 0.28)
+			add_box(parent, Vector3(0.36, 0.11, 0.04), Color(0.85, 0.92, 1.0), Vector3(x, top - 0.1, fz + 0.01), true)
+			add_box(parent, Vector3(0.36, 0.1, 0.04), Color(1.0, 0.05, 0.02), Vector3(x, top - 0.1, bz - 0.01), true)
+			add_box(parent, Vector3(0.16, 0.09, 0.07), color, Vector3(s * (W / 2.0 + 0.05), top + 0.12, cab_front - 0.05))
+			add_box(parent, Vector3(0.02, 0.06, L * 0.7), dark, Vector3(s * (W / 2.0 + 0.005), -0.12, 0))
+			add_box(parent, Vector3(0.02, hb * 0.75, 0.02), dark, Vector3(s * (W / 2.0 + 0.005), -0.3 + hb / 2.0, cz + cl * 0.1))
+		add_box(parent, Vector3(0.42, 0.12, 0.02), Color(0.95, 0.95, 0.9), Vector3(0, -0.16, fz + 0.08))
+		add_box(parent, Vector3(0.42, 0.12, 0.02), Color(0.95, 0.95, 0.9), Vector3(0, -0.16, bz - 0.08))
+
+		match style:
+			&quot;taxi&quot;:
+				add_box(parent, Vector3(0.6, 0.18, 0.25), Color(1.0, 0.95, 0.7), Vector3(0, top + hc + 0.09, cz), true)
+				for i in range(8):
+					if i % 2 == 0:
+						for s in [-1.0, 1.0]:
+							add_box(parent, Vector3(0.02, 0.08, 0.25), dark, Vector3(s * (W / 2.0 + 0.006), top - 0.18, -1.0 + i * 0.25))
+			&quot;truck&quot;:
+				var bed_len = cab_back - bz - 0.1
+				var bed_z = (cab_back + bz) / 2.0 - 0.05
+				add_box(parent, Vector3(W - 0.1, 0.05, bed_len), dark, Vector3(0, top + 0.02, bed_z))
+				for s in [-1.0, 1.0]:
+					add_box(parent, Vector3(0.08, 0.35, bed_len), color, Vector3(s * (W / 2.0 - 0.04), top + 0.175, bed_z), false, 0.5)
+				add_box(parent, Vector3(W, 0.35, 0.08), color, Vector3(0, top + 0.175, bz + 0.04), false, 0.5)
+				add_box(parent, Vector3(W - 0.3, 0.06, 0.12), Color(1.0, 0.6, 0.1), Vector3(0, top + hc + 0.03, cz + 0.4), true)
+			&quot;sport&quot;:
+				add_box(parent, Vector3(W - 0.2, 0.05, 0.25), dark, Vector3(0, top + 0.05, bz + 0.22))
+				for s in [-1.0, 1.0]:
+					add_box(parent, Vector3(0.03, 0.12, 0.5), dark, Vector3(s * (W / 2.0 + 0.01), top - 0.2, 0.3))
+			&quot;beast&quot;:
+				var red = Color(0.9, 0.05, 0.05)
+				add_box(parent, Vector3(0.5, 0.12, 0.6), dark, Vector3(0, top + 0.06, fz - 0.8))
+				for x in [-0.2, 0.2]:
+					add_box(parent, Vector3(0.16, 0.02, L + 0.02), red, Vector3(x, top + 0.01, 0))
+					add_box(parent, Vector3(0.16, 0.02, cl), red, Vector3(x, top + hc + 0.01, cz))
+				for x in [-0.5, 0.5]:
+					add_box(parent, Vector3(0.08, 0.3, 0.08), dark, Vector3(x, top + 0.15, bz + 0.35))
+				add_box(parent, Vector3(W, 0.06, 0.42), dark, Vector3(0, top + 0.32, bz + 0.3))
+				for s in [-1.0, 1.0]:
+					add_box(parent, Vector3(0.06, 0.12, L * 0.6), red, Vector3(s * (W / 2.0 + 0.02), -0.25, 0))
+			&quot;super&quot;:
+				for x in [-0.6, 0.6]:
+					add_box(parent, Vector3(0.08, 0.35, 0.08), dark, Vector3(x, top + 0.17, bz + 0.35))
+				add_box(parent, Vector3(W, 0.05, 0.45), dark, Vector3(0, top + 0.36, bz + 0.3))
+				for s in [-1.0, 1.0]:
+					add_box(parent, Vector3(0.04, 0.2, 0.6), dark, Vector3(s * (W / 2.0), top - 0.15, -0.6))
+				add_box(parent, Vector3(0.1, 0.02, L + 0.02), Color(0.1, 0.1, 0.1), Vector3(0, top + 0.01, 0))
+
+
+	# A triangle-shaped glass piece (used for sloped windscreens)
+	func add_wedge(parent: Node3D, length: float, height: float, width: float, pos: Vector3, apex: float, color: Color):
+		var part = MeshInstance3D.new()
+		var shape = PrismMesh.new()
+		shape.size = Vector3(length, height, width)
+		shape.left_to_right = apex
+		shape.material = make_material(color)
+		part.mesh = shape
+		part.position = pos
+		part.rotation_degrees = Vector3(0, 90, 0)
+		parent.add_child(part)
+
+
+	func add_box(parent: Node3D, size: Vector3, color: Color, pos: Vector3, glow := false, metal := 0.0) -&gt; MeshInstance3D:
+		var part = MeshInstance3D.new()
+		var shape = BoxMesh.new()
+		shape.size = size
+		var mat = make_material(color, metal)
+		if glow:
+			mat.emission_enabled = true
+			mat.emission = color
+			mat.emission_energy_multiplier = 3.0
+		shape.material = mat
+		part.mesh = shape
+		part.position = pos
+		parent.add_child(part)
+		return part
+
+
+	func add_cylinder(parent: Node, radius: float, height: float, color: Color, pos: Vector3, rot: Vector3, metal := 0.0) -&gt; MeshInstance3D:
+		var part = MeshInstance3D.new()
+		var shape = CylinderMesh.new()
+		shape.top_radius = radius
+		shape.bottom_radius = radius
+		shape.height = height
+		shape.material = make_material(color, metal)
+		part.mesh = shape
+		part.position = pos
+		part.rotation_degrees = rot
+		parent.add_child(part)
+		return part
+
+
+	func make_material(color: Color, metal := 0.0) -&gt; StandardMaterial3D:
+		var mat = StandardMaterial3D.new()
+		mat.albedo_color = color
+		mat.metallic = metal
+		mat.roughness = 0.35
+		return mat
 </pre>
   </section>
   <p class="note">The picture is a preview drawing made outside Godot. Your game will look similar, not identical.</p>
