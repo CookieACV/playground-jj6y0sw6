@@ -1,0 +1,512 @@
+<title>Python Coach</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: one phone-width column. Mission card on top, editor, then a sticky Run bar at the thumb. */
+:root {
+  --bg: #eaf3f0;
+  --card: #ffffff;
+  --line: #cfe0da;
+  --fg: #12221e;
+  --muted: #557069;
+  --accent: #0d7468;
+  --accent-fg: #ffffff;
+  --accent-soft: #d6efe9;
+  --pop: #f0643c;
+  --code-bg: #f6faf9;
+  --ok: #157347;
+  --ok-bg: #dcf5e7;
+  --warn: #8a4b00;
+  --warn-bg: #fff0d6;
+  --err: #b42318;
+  --err-bg: #fdecea;
+  --font-display: "Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
+  --font-ui: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-code: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1715; --card: #15211e; --line: #263833; --fg: #e4efec; --muted: #8fa9a2;
+    --accent: #3fc1ae; --accent-fg: #06201b; --accent-soft: #173a34; --pop: #ff8a65; --code-bg: #101a18;
+    --ok: #6fdc9f; --ok-bg: #143224; --warn: #ffc874; --warn-bg: #362812; --err: #ff8a80; --err-bg: #3a1d1d;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1715; --card: #15211e; --line: #263833; --fg: #e4efec; --muted: #8fa9a2;
+  --accent: #3fc1ae; --accent-fg: #06201b; --accent-soft: #173a34; --pop: #ff8a65; --code-bg: #101a18;
+  --ok: #6fdc9f; --ok-bg: #143224; --warn: #ffc874; --warn-bg: #362812; --err: #ff8a80; --err-bg: #3a1d1d;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+code, pre, textarea, .out, .nums { font-variant-ligatures: none; font-feature-settings: "liga" 0, "calt" 0; }
+body {
+  background: var(--bg); color: var(--fg); font-family: var(--font-ui); font-size: 16px; line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 12px 0;
+}
+.wrap { max-width: 640px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; padding-bottom: 96px; }
+header { display: flex; align-items: center; gap: 10px; }
+.brand { font-family: var(--font-display); font-weight: 800; font-size: 20px; letter-spacing: -0.02em; margin-right: auto; }
+.brand b { color: var(--accent); }
+.pill-btn { font: inherit; font-size: 14px; font-weight: 600; border: 1px solid var(--line); background: var(--card); color: var(--fg); border-radius: 999px; padding: 7px 14px; cursor: pointer; }
+.progress { height: 8px; background: var(--line); border-radius: 99px; overflow: hidden; }
+.progress i { display: block; height: 100%; background: var(--accent); border-radius: 99px; transition: width .4s ease; }
+.meta { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 16px; }
+.eyebrow { font-size: 12px; text-transform: uppercase; letter-spacing: .09em; font-weight: 600; color: var(--accent); }
+h2 { font-family: var(--font-display); font-weight: 800; font-size: 26px; line-height: 1.15; margin: 4px 0 10px; letter-spacing: -0.02em; text-wrap: balance; }
+.learn p { margin: 0 0 10px; }
+.learn code, .task code, .feedback code { font-family: var(--font-code); font-size: 0.88em; background: var(--accent-soft); padding: 1px 5px; border-radius: 5px; }
+.learn pre { font-family: var(--font-code); font-size: 14px; background: var(--code-bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin: 0 0 10px; overflow-x: auto; }
+.task { background: var(--accent-soft); border-radius: 12px; padding: 12px 14px; display: flex; gap: 10px; align-items: flex-start; }
+.task .tag { flex: none; font-family: var(--font-display); font-weight: 800; color: var(--accent-fg); background: var(--accent); border-radius: 8px; padding: 2px 8px; font-size: 13px; margin-top: 2px; }
+.task div { min-width: 0; }
+
+.editor-card { padding: 0; overflow: hidden; }
+.keys { display: flex; gap: 6px; padding: 8px; overflow-x: auto; border-bottom: 1px solid var(--line); scrollbar-width: none; }
+.keys::-webkit-scrollbar { display: none; }
+.keys button { flex: none; font-family: var(--font-code); font-size: 16px; font-weight: 600; min-width: 40px; height: 38px; border-radius: 8px; border: 1px solid var(--line); background: var(--code-bg); color: var(--fg); cursor: pointer; padding: 0 10px; }
+.keys button:active { background: var(--accent-soft); }
+.editor { display: flex; overflow: auto; max-height: 55vh; font-family: var(--font-code); font-size: 16px; line-height: 25.6px; background: var(--code-bg); }
+.nums { padding: 12px 6px 12px 10px; color: var(--muted); opacity: .7; text-align: right; white-space: pre; user-select: none; font-variant-numeric: tabular-nums; flex: none; font-size: 14px; line-height: 25.6px; }
+.nums .bad { color: var(--err); opacity: 1; font-weight: 700; }
+textarea#code { flex: 1 0 auto; min-width: 0; border: 0; resize: none; margin: 0; padding: 12px; font: inherit; line-height: inherit; background: transparent; color: var(--fg); white-space: pre; overflow: hidden; tab-size: 4; outline: none; min-height: 7em; }
+.ed-foot { display: flex; gap: 8px; padding: 8px; border-top: 1px solid var(--line); flex-wrap: wrap; }
+.ed-foot .pill-btn { font-size: 13px; padding: 6px 12px; }
+
+.out-card h3 { margin: 0 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: .09em; color: var(--muted); }
+.out { font-family: var(--font-code); font-size: 15px; white-space: pre-wrap; word-break: break-word; min-height: 1.5em; }
+.out .sys { color: var(--muted); font-style: italic; font-family: var(--font-ui); }
+.out .typed { color: var(--accent); font-weight: 600; }
+.out .error { display: block; color: var(--err); background: var(--err-bg); border-radius: 8px; padding: 8px 10px; margin-top: 4px; }
+.inrow { display: flex; gap: 8px; margin: 6px 0; }
+.inrow input { flex: 1; min-width: 0; font: inherit; font-size: 16px; padding: 8px 10px; border: 2px solid var(--accent); border-radius: 10px; background: var(--card); color: var(--fg); }
+
+.feedback { border-radius: 14px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+.feedback.ok { background: var(--ok-bg); color: var(--ok); }
+.feedback.no { background: var(--warn-bg); color: var(--warn); }
+.feedback.bad { background: var(--err-bg); color: var(--err); }
+.feedback strong { font-family: var(--font-display); font-size: 20px; font-weight: 800; }
+.feedback p { margin: 0; color: var(--fg); }
+.feedback .row { display: flex; gap: 8px; flex-wrap: wrap; }
+.solution { font-family: var(--font-code); font-size: 14px; background: var(--card); color: var(--fg); border-radius: 10px; padding: 10px 12px; white-space: pre; overflow-x: auto; margin: 0; }
+
+.runbar {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 5;
+  background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(8px);
+  border-top: 1px solid var(--line);
+  padding: 10px max(16px, env(safe-area-inset-right, 0px)) calc(10px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+}
+.runbar .inner { max-width: 640px; margin: 0 auto; display: flex; gap: 8px; }
+.big { flex: 1; font-family: var(--font-display); font-size: 19px; font-weight: 800; border: 0; border-radius: 14px; padding: 13px; cursor: pointer; background: var(--accent); color: var(--accent-fg); }
+.big.next { background: var(--pop); color: #fff; }
+.big:disabled { opacity: .55; cursor: default; }
+.side { font: inherit; font-weight: 600; border-radius: 14px; border: 1px solid var(--line); background: var(--card); color: var(--fg); padding: 0 16px; cursor: pointer; }
+button:focus-visible, textarea:focus-visible, input:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+dialog { border: 0; border-radius: 18px; padding: 0; width: min(520px, calc(100vw - 32px)); max-height: 80vh; background: var(--card); color: var(--fg); }
+dialog::backdrop { background: rgba(0,0,0,.4); }
+.dlg-head { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--card); }
+.dlg-head b { font-family: var(--font-display); font-size: 20px; }
+.steps { list-style: none; margin: 0; padding: 8px; }
+.steps button { width: 100%; text-align: left; display: flex; gap: 12px; align-items: center; font: inherit; background: none; border: 0; color: var(--fg); padding: 10px; border-radius: 10px; cursor: pointer; }
+.steps button:hover { background: var(--accent-soft); }
+.steps .dot { flex: none; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; font-weight: 700; border: 2px solid var(--line); font-variant-numeric: tabular-nums; }
+.steps .done .dot { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
+.steps .here .dot { border-color: var(--pop); color: var(--pop); }
+.steps small { display: block; color: var(--muted); font-size: 12px; }
+
+.burst { position: fixed; inset: 0; pointer-events: none; z-index: 20; overflow: hidden; }
+.burst span { position: absolute; width: 10px; height: 14px; border-radius: 2px; top: -20px; animation: fall 1.4s ease-in forwards; }
+@keyframes fall { to { transform: translateY(110vh) rotate(540deg); opacity: .8; } }
+@media (prefers-reduced-motion: reduce) { .burst { display: none; } .progress i { transition: none; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="brand">Python <b>Coach</b></div>
+    <button class="pill-btn" id="menuBtn" type="button">☰ Missions</button>
+  </header>
+  <div>
+    <div class="progress"><i id="bar" style="width:0%"></i></div>
+    <div class="meta"><span id="stepNo">Mission 1 of 15</span><span id="doneNo">0 done</span></div>
+  </div>
+
+  <section class="card learn" id="learn"></section>
+
+  <section class="card editor-card">
+    <div class="keys" id="keys" aria-label="Symbol keys"></div>
+    <div class="editor" id="editorBox">
+      <div class="nums" id="nums" aria-hidden="true">1</div>
+      <textarea id="code" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" aria-label="Your Python code"></textarea>
+    </div>
+    <div class="ed-foot">
+      <button class="pill-btn" id="hintBtn" type="button">💡 Hint</button>
+      <button class="pill-btn" id="resetBtn" type="button">↺ Start over</button>
+    </div>
+  </section>
+
+  <section class="card out-card">
+    <h3>Output</h3>
+    <div class="out" id="out"><span class="sys">Your code's output will show up here.</span></div>
+  </section>
+
+  <section class="feedback" id="feedback" hidden></section>
+</div>
+
+<div class="runbar">
+  <div class="inner">
+    <button class="side" id="prevBtn" type="button" aria-label="Previous mission">←</button>
+    <button class="big" id="runBtn" type="button">▶ Run &amp; check</button>
+    <button class="side" id="skipBtn" type="button" aria-label="Next mission">→</button>
+  </div>
+</div>
+
+<dialog id="menu">
+  <div class="dlg-head"><b>Missions</b><button class="pill-btn" id="closeMenu" type="button">Close</button></div>
+  <ul class="steps" id="stepList"></ul>
+</dialog>
+
+<script src="https://cdn.jsdelivr.net/npm/skulpt@1.2.0/dist/skulpt.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/skulpt@1.2.0/dist/skulpt-stdlib.js"></script>
+<script>
+// ---------------- missions ----------------
+// check(out, code) returns true when passed, or a string telling the learner what's missing.
+const lines = out => out.split("\n").map(s => s.trim()).filter(Boolean);
+const M = [
+ { title: "Make Python talk", topic: "print",
+   learn: `<p><code>print()</code> shows something on the screen. Text goes inside quotes.</p><pre>print("Hello!")</pre>`,
+   task: `Change <code>Hello!</code> to your own name, then tap <b>Run &amp; check</b>.`,
+   start: `print("Hello!")\n`,
+   hint: `Only change the words between the quotes. Keep the quotes and brackets.`,
+   answer: `print("Sam")`,
+   check: (o) => lines(o).length === 0 ? "Nothing was printed. Make sure the print( ) line is still there." : lines(o)[0] === "Hello!" ? "It still says Hello!. Swap it for your name." : true },
+
+ { title: "Two lines", topic: "print",
+   learn: `<p>Every <code>print()</code> makes a new line. Python runs your code from top to bottom.</p><pre>print("Line one")\nprint("Line two")</pre>`,
+   task: `Print <b>two</b> lines: your name, then your favourite food.`,
+   start: `print("My name is ...")\n`,
+   hint: `Add a second line underneath that starts with print( and ends with ).`,
+   answer: `print("My name is Sam")\nprint("I love pizza")`,
+   check: (o) => lines(o).length < 2 ? "I only see " + lines(o).length + " line. Add another print( ) underneath." : true },
+
+ { title: "Python is a calculator", topic: "numbers",
+   learn: `<p>Numbers don't need quotes. Python can do maths: <code>+</code> add, <code>-</code> subtract, <code>*</code> times, <code>/</code> divide.</p><pre>print(2 + 3)   # shows 5</pre>`,
+   task: `Use <code>*</code> to make Python work out <b>7 times 8</b>.`,
+   start: `print(2 + 3)\n`,
+   hint: `Change 2 + 3 to 7 * 8. The star means "times".`,
+   answer: `print(7 * 8)`,
+   check: (o, c) => !/\*/.test(c) ? "Use the * sign for times." : !lines(o).includes("56") ? "Close! The answer should come out as 56." : true },
+
+ { title: "Variables are boxes", topic: "variables",
+   learn: `<p>A <b>variable</b> is a named box that stores a value. Use <code>=</code> to put something in it.</p><pre>age = 12\nprint("I am", age)</pre><p>The comma in <code>print</code> puts a space between things.</p>`,
+   task: `Put <b>your</b> age in the box, then run it.`,
+   start: `age = 12\nprint("I am", age)\n`,
+   hint: `Change the 12 on the first line. Leave everything else.`,
+   answer: `age = 15\nprint("I am", age)`,
+   check: (o, c) => !/age\s*=\s*\d+/.test(c) ? "Keep the line age = (a number)." : /\bage\s*=\s*12\b/.test(c) ? "That's still 12. Put your real age in." : !/I am \d+/.test(o) ? "Keep the print line so it shows I am ..." : true },
+
+ { title: "Boxes can do maths", topic: "variables",
+   learn: `<p>Once a number is in a variable, you can do maths with it.</p><pre>age = 12\nprint(age + 1)   # shows 13</pre>`,
+   task: `Add a line that prints <b>how old you'll be in 10 years</b>.`,
+   start: `age = 12\nprint("Now:", age)\n`,
+   hint: `Add: print("In 10 years:", age + 10)`,
+   answer: `age = 12\nprint("Now:", age)\nprint("In 10 years:", age + 10)`,
+   check: (o, c) => !/age\s*\+\s*10/.test(c) ? "Use age + 10 so Python does the maths for you." : lines(o).length < 2 ? "Print the new number on its own line." : true },
+
+ { title: "Making decisions", topic: "if",
+   learn: `<p><code>if</code> runs code only when something is true. Notice the <b>colon</b> <code>:</code> and the <b>indent</b> (4 spaces) on the next line.</p><pre>if age >= 13:\n    print("You're a teenager!")</pre><p><code>>=</code> means "bigger than or equal to".</p>`,
+   task: `Right now nothing prints. Change the age so the message <b>does</b> appear.`,
+   start: `age = 10\n\nif age >= 13:\n    print("You're a teenager!")\n`,
+   hint: `The message only shows if age is 13 or more.`,
+   answer: `age = 14\n\nif age >= 13:\n    print("You're a teenager!")`,
+   check: (o) => !o.includes("teenager") ? "Nothing printed yet. Try a bigger age." : true },
+
+ { title: "Otherwise… else", topic: "if",
+   learn: `<p><code>else</code> runs when the <code>if</code> was <b>not</b> true. It also needs a colon and an indent.</p><pre>if score > 50:\n    print("Pass")\nelse:\n    print("Try again")</pre>`,
+   task: `Add an <code>else</code> so that when the number is small it prints <b>Small</b>.`,
+   start: `number = 5\n\nif number > 100:\n    print("Big!")\n`,
+   hint: `Under the if block, type else: at the start of a line (no spaces), then on the next line, indented, print("Small").`,
+   answer: `number = 5\n\nif number > 100:\n    print("Big!")\nelse:\n    print("Small")`,
+   check: (o, c) => !/^else\s*:/m.test(c) ? "I don't see an else: line yet. It goes at the left edge, lined up with if." : !lines(o).includes("Small") ? "Make the else print exactly Small." : true },
+
+ { title: "Loops repeat things", topic: "loops",
+   learn: `<p>A <code>for</code> loop runs the same code again and again. <code>range(1, 4)</code> means 1, 2, 3. It stops <b>before</b> the last number.</p><pre>for i in range(1, 4):\n    print(i)</pre>`,
+   task: `Make it count from <b>1 to 10</b>.`,
+   start: `for i in range(1, 4):\n    print(i)\n`,
+   hint: `range stops one before the end, so to reach 10 you need range(1, 11).`,
+   answer: `for i in range(1, 11):\n    print(i)`,
+   check: (o) => { const l = lines(o); return l.join(",") === "1,2,3,4,5,6,7,8,9,10" ? true : l.at(-1) === "11" ? "Too far, it went to 11! range stops one before the end." : "It should print 1 to 10. Right now it ends at " + (l.at(-1) ?? "nothing") + "."; } },
+
+ { title: "Times tables machine", topic: "loops",
+   learn: `<p>Loops get powerful when you do maths inside them.</p><pre>for i in range(1, 4):\n    print(i, "x 2 =", i * 2)</pre>`,
+   task: `Make it print the <b>5 times table</b> from 5 x 1 up to 5 x 10.`,
+   start: `for i in range(1, 4):\n    print(i, "x 2 =", i * 2)\n`,
+   hint: `Two changes: range(1, 11), and print("5 x", i, "=", 5 * i).`,
+   answer: `for i in range(1, 11):\n    print("5 x", i, "=", 5 * i)`,
+   check: (o) => { const l = lines(o); return l.length !== 10 ? "I want 10 lines, I got " + l.length + "." : !/\b50$/.test(l[9]) ? "The last line should end with 50 (5 x 10)." : true; } },
+
+ { title: "Lists hold many things", topic: "lists",
+   learn: `<p>A <b>list</b> keeps many values in order, inside square brackets. <code>.append()</code> adds one to the end.</p><pre>pets = ["cat", "dog"]\npets.append("fish")\nprint(pets)</pre>`,
+   task: `Add <b>two</b> more of your favourite foods with <code>.append()</code>.`,
+   start: `foods = ["pizza", "rice"]\n\nprint(foods)\n`,
+   hint: `Above the print line, add foods.append("tacos") and one more like it.`,
+   answer: `foods = ["pizza", "rice"]\nfoods.append("tacos")\nfoods.append("mango")\nprint(foods)`,
+   check: (o, c) => (c.match(/\.append\(/g) || []).length < 2 ? "Use .append( ) two times." : (o.match(/'/g) || []).length < 8 ? "Put the append lines above print so they show up in the list." : true },
+
+ { title: "Loop through a list", topic: "lists",
+   learn: `<p>A <code>for</code> loop can visit every item in a list. Each time round, <code>food</code> holds the next item.</p><pre>for food in foods:\n    print(food)</pre>`,
+   task: `Make it print <b>I like</b> before each food, like <code>I like pizza</code>.`,
+   start: `foods = ["pizza", "rice", "mango"]\n\nfor food in foods:\n    print(food)\n`,
+   hint: `Change the print to print("I like", food).`,
+   answer: `foods = ["pizza", "rice", "mango"]\n\nfor food in foods:\n    print("I like", food)`,
+   check: (o) => lines(o).filter(l => l.startsWith("I like")).length < 3 ? "Every line should start with I like." : true },
+
+ { title: "Make your own command", topic: "functions",
+   learn: `<p>A <b>function</b> is code with a name, so you can reuse it. <code>def</code> creates it, and calling its name runs it.</p><pre>def cheer(name):\n    print("Go", name, "!")\n\ncheer("Ali")</pre>`,
+   task: `Call <code>greet</code> <b>three times</b> with three different names.`,
+   start: `def greet(name):\n    print("Hi", name)\n\ngreet("Ali")\n`,
+   hint: `Copy the last line twice and change the names. These lines are NOT indented.`,
+   answer: `def greet(name):\n    print("Hi", name)\n\ngreet("Ali")\ngreet("Mia")\ngreet("Leo")`,
+   check: (o) => { const l = lines(o).filter(x => x.startsWith("Hi")); return l.length < 3 ? "I see " + l.length + " greeting(s). I need 3." : new Set(l).size < 3 ? "Use three different names." : true; } },
+
+ { title: "Functions that answer back", topic: "functions",
+   learn: `<p><code>return</code> sends a value back from a function, so you can use it.</p><pre>def double(n):\n    return n * 2\n\nprint(double(4))   # 8</pre>`,
+   task: `Finish <code>triple</code> so it returns the number <b>times 3</b>. It should print 15.`,
+   start: `def triple(n):\n    return n\n\nprint(triple(5))\n`,
+   hint: `Change return n to return n * 3.`,
+   answer: `def triple(n):\n    return n * 3\n\nprint(triple(5))`,
+   check: (o) => !lines(o).includes("15") ? "triple(5) should give 15." : true },
+
+ { title: "Ask the player", topic: "input",
+   learn: `<p><code>input()</code> pauses and waits for you to type. Whatever you type gets stored in a variable.</p><pre>name = input("Name? ")\nprint("Hi", name)</pre><p>When it runs, a typing box appears in the Output.</p>`,
+   task: `Run it, type your name, and press Enter. Then make it also ask for your <b>favourite colour</b> and print it.`,
+   start: `name = input("What's your name? ")\nprint("Nice to meet you,", name)\n`,
+   hint: `Add: colour = input("Favourite colour? ") and then print("Cool,", colour)`,
+   answer: `name = input("What's your name? ")\nprint("Nice to meet you,", name)\ncolour = input("Favourite colour? ")\nprint("Cool,", colour)`,
+   check: (o, c) => (c.match(/input\(/g) || []).length < 2 ? "Add a second input( ) that asks for a colour." : lines(o).length < 4 ? "Print the colour after you ask for it." : true },
+
+ { title: "Boss level: guessing game", topic: "project",
+   learn: `<p>Put it all together! <code>int()</code> turns typed text into a number. <code>elif</code> means "else if": another check to try.</p><pre>if guess == secret:   # == means "is equal to"</pre>`,
+   task: `The game never says <b>Too high!</b>. Add an <code>else</code> that does, then run it and guess <b>9</b> to test.`,
+   start: `secret = 7\nguess = int(input("Guess a number 1-10: "))\n\nif guess == secret:\n    print("You got it!")\nelif guess < secret:\n    print("Too low!")\n`,
+   hint: `At the end add else: (left edge) and on the next line, indented, print("Too high!")`,
+   answer: `secret = 7\nguess = int(input("Guess a number 1-10: "))\n\nif guess == secret:\n    print("You got it!")\nelif guess < secret:\n    print("Too low!")\nelse:\n    print("Too high!")`,
+   check: (o, c) => !/Too high/.test(c) ? "Add code that prints Too high!" : !o.includes("Too high!") ? "Your code looks right. Now run it and type 9 to test it." : true },
+];
+
+// ---------------- state ----------------
+const $ = id => document.getElementById(id);
+const code = $("code"), out = $("out"), fb = $("feedback");
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
+};
+let idx = Math.min(store.get("coach:idx", 0), M.length - 1);
+let done = new Set(store.get("coach:done", []));
+let fails = 0, running = false, stopRequested = false, errLine = 0;
+
+function render() {
+  const m = M[idx];
+  $("learn").innerHTML = `<div class="eyebrow">Mission ${idx + 1} · ${m.topic}</div><h2>${m.title}</h2>${m.learn}
+    <div class="task"><span class="tag">TRY</span><div>${m.task}</div></div>`;
+  code.value = store.get("coach:code:" + idx, m.start);
+  out.innerHTML = '<span class="sys">Your code\'s output will show up here.</span>';
+  fb.hidden = true; fails = 0; errLine = 0;
+  $("stepNo").textContent = `Mission ${idx + 1} of ${M.length}`;
+  $("doneNo").textContent = `${done.size} done`;
+  $("bar").style.width = (done.size / M.length * 100) + "%";
+  $("prevBtn").disabled = idx === 0;
+  $("skipBtn").disabled = idx === M.length - 1;
+  setRunMode();
+  store.set("coach:idx", idx);
+  updateNums();
+}
+function go(i) { if (running) stopRequested = true; idx = Math.max(0, Math.min(M.length - 1, i)); render(); window.scrollTo({ top: 0, behavior: "smooth" }); }
+function setRunMode(next) {
+  const b = $("runBtn");
+  if (next) { b.textContent = idx === M.length - 1 ? "🏆 All done! Free play →" : "Next mission →"; b.classList.add("next"); b.onclick = () => idx === M.length - 1 ? freePlay() : go(idx + 1); }
+  else { b.textContent = "▶ Run & check"; b.classList.remove("next"); b.onclick = run; }
+}
+
+// ---------------- editor ----------------
+function updateNums() {
+  const n = code.value.split("\n").length; let s = "";
+  for (let i = 1; i <= n; i++) s += (i === errLine ? `<span class="bad">${i}</span>` : i) + "\n";
+  $("nums").innerHTML = s;
+  code.style.height = "auto"; code.style.height = code.scrollHeight + "px";
+  code.style.width = ""; if (code.scrollWidth > code.clientWidth) code.style.width = (code.scrollWidth + 4) + "px";
+}
+function changed() {
+  // Phones love turning " into curly quotes, which Python can't read. Straighten them.
+  if (/[“”‘’]/.test(code.value)) {
+    const p = code.selectionStart;
+    code.value = code.value.replace(/[“”]/g, '"').replace(/[‘’]/g, "'");
+    code.selectionStart = code.selectionEnd = p;
+  }
+  errLine = 0; updateNums();
+  store.set("coach:code:" + idx, code.value);
+  if ($("runBtn").classList.contains("next")) setRunMode();
+}
+code.addEventListener("input", changed);
+function insert(text, back = 0) {
+  code.focus();
+  const s = code.selectionStart, e = code.selectionEnd;
+  code.setRangeText(text, s, e, "end");
+  if (back) code.selectionStart = code.selectionEnd = code.selectionEnd - back;
+  changed();
+}
+code.addEventListener("beforeinput", e => {
+  if (e.inputType === "insertLineBreak" || (e.inputType === "insertText" && e.data === "\n")) {
+    const v = code.value, s = code.selectionStart;
+    const line = v.slice(v.lastIndexOf("\n", s - 1) + 1, s);
+    let ind = line.match(/^ */)[0];
+    if (/:\s*(#.*)?$/.test(line)) ind += "    ";
+    e.preventDefault(); insert("\n" + ind);
+  }
+});
+code.addEventListener("keydown", e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); $("runBtn").click(); }
+  else if (e.key === "Tab") { e.preventDefault(); insert("    "); }
+});
+const KEYS = [["⇥", "    "], ['" "', '""', 1], ["( )", "()", 1], [":", ":"], ["=", "="], ["[ ]", "[]", 1], [",", ","], ["+", "+"], ["*", "*"], ["<", "<"], [">", ">"], ["#", "#"], ["'", "'"]];
+for (const [label, text, back] of KEYS) {
+  const b = document.createElement("button"); b.type = "button"; b.textContent = label;
+  b.setAttribute("aria-label", label === "⇥" ? "Indent" : "Insert " + text);
+  b.addEventListener("pointerdown", e => e.preventDefault()); // keep the phone keyboard open
+  b.addEventListener("click", () => insert(text, back || 0));
+  $("keys").appendChild(b);
+}
+
+let resetArmed = false, resetT;
+$("resetBtn").onclick = () => {
+  const b = $("resetBtn");
+  if (!resetArmed) { resetArmed = true; b.textContent = "Tap again to start over"; clearTimeout(resetT); resetT = setTimeout(() => { resetArmed = false; b.textContent = "↺ Start over"; }, 3000); return; }
+  resetArmed = false; b.textContent = "↺ Start over";
+  store.set("coach:code:" + idx, M[idx].start); code.value = M[idx].start; changed(); fb.hidden = true;
+};
+$("hintBtn").onclick = () => showFeedback("no", "💡 Hint", M[idx].hint);
+$("prevBtn").onclick = () => go(idx - 1);
+$("skipBtn").onclick = () => go(idx + 1);
+
+// ---------------- missions menu ----------------
+$("menuBtn").onclick = () => {
+  $("stepList").innerHTML = M.map((m, i) => `<li class="${done.has(i) ? "done" : ""} ${i === idx ? "here" : ""}"><button type="button" data-i="${i}"><span class="dot">${done.has(i) ? "✓" : i + 1}</span><span>${m.title}<small>${m.topic}</small></span></button></li>`).join("")
+    + `<li><button type="button" data-i="free"><span class="dot">✎</span><span>Free play<small>write anything you like</small></span></button></li>`;
+  $("menu").showModal();
+};
+$("closeMenu").onclick = () => $("menu").close();
+$("stepList").onclick = e => { const b = e.target.closest("button"); if (!b) return; $("menu").close(); b.dataset.i === "free" ? freePlay() : go(+b.dataset.i); };
+
+function freePlay() {
+  idx = M.length; // a virtual mission with no check
+  $("learn").innerHTML = `<div class="eyebrow">Free play</div><h2>Your playground</h2><p>No rules here. Mix anything you've learned: variables, if, loops, lists, functions, input. Try making a quiz, a times-table tester or a story that asks the reader questions.</p>
+    <div class="task"><span class="tag">IDEA</span><div>Ask 3 maths questions with <code>input()</code> and count how many the player gets right.</div></div>`;
+  code.value = store.get("coach:code:free", `# Free play! Write anything.\nprint("Hello from free play")\n`);
+  out.innerHTML = '<span class="sys">Your code\'s output will show up here.</span>';
+  fb.hidden = true; $("stepNo").textContent = "Free play"; $("prevBtn").disabled = false; $("skipBtn").disabled = true;
+  $("prevBtn").onclick = () => { $("prevBtn").onclick = () => go(idx - 1); go(M.length - 1); };
+  const b = $("runBtn"); b.textContent = "▶ Run"; b.classList.remove("next"); b.onclick = run;
+  updateNums(); window.scrollTo({ top: 0, behavior: "smooth" });
+}
+const codeKey = () => "coach:code:" + (idx === M.length ? "free" : idx);
+code.addEventListener("input", () => { if (idx === M.length) store.set("coach:code:free", code.value); });
+
+// ---------------- feedback ----------------
+function esc(s) { return s.replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]); }
+function showFeedback(kind, title, html, extra = "") {
+  fb.className = "feedback " + kind; fb.hidden = false;
+  fb.innerHTML = `<strong>${title}</strong><p>${html}</p>${extra}`;
+  fb.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+function celebrate() {
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const box = document.createElement("div"); box.className = "burst";
+  const cols = ["var(--accent)", "var(--pop)", "#f5c518", "#5b8def"];
+  for (let i = 0; i < 40; i++) { const s = document.createElement("span"); s.style.left = Math.random() * 100 + "%"; s.style.background = cols[i % 4]; s.style.animationDelay = Math.random() * .4 + "s"; box.appendChild(s); }
+  document.body.appendChild(box); setTimeout(() => box.remove(), 2200);
+}
+const PRAISE = ["Nailed it!", "Nice one!", "You're a natural!", "Boom! Correct!", "Look at you coding!"];
+
+function hintFor(msg) {
+  if (/IndentationError|unindent|expected an indented block/i.test(msg)) return "Python cares about the spaces at the start of a line. Lines inside an if, for or def must be indented (use the ⇥ key), and lines in the same block must line up exactly.";
+  if (/EOF in multi-line string|EOL while scanning/i.test(msg)) return "Some text is missing its closing quote. Every \" needs a partner \".";
+  if (/SyntaxError/.test(msg)) return "Python couldn't read this line. Usually it's a missing colon : at the end of an if/for/def line, a missing bracket ), or a missing quote \".";
+  if (/NameError/.test(msg)) { const n = (msg.match(/name '([^']+)'/) || [])[1]; return `Python doesn't know what <code>${esc(n || "that")}</code> is. Check the spelling, make sure the variable was created first, and put quotes around text.`; }
+  if (/invalid literal for int/.test(msg)) return "int() can only turn digits into a number. Type a number like 9, not a word.";
+  if (/TypeError/.test(msg) && /concatenate|unsupported operand/.test(msg)) return "You're mixing text and numbers with +. Use a comma in print instead: print(\"Age:\", age)";
+  if (/TypeError/.test(msg)) return "Something got the wrong kind of value. Check what's inside the brackets.";
+  if (/IndexError/.test(msg)) return "That list position doesn't exist. Lists start counting at 0.";
+  return "Read the red message: it says which line and what went wrong.";
+}
+
+// ---------------- run ----------------
+function write(t, cls) { const s = document.createElement("span"); if (cls) s.className = cls; s.textContent = t; out.appendChild(s); return s; }
+let pendingInput = null;
+function askInput(prompt) {
+  return new Promise((resolve, reject) => {
+    if (prompt) write(String(prompt));
+    const row = document.createElement("div"); row.className = "inrow";
+    const inp = document.createElement("input"); inp.id = "pyinput"; inp.type = "text"; inp.placeholder = "Type here…"; inp.setAttribute("aria-label", "Your answer");
+    inp.setAttribute("autocapitalize", "off"); inp.setAttribute("autocorrect", "off");
+    const ok = document.createElement("button"); ok.type = "button"; ok.className = "pill-btn"; ok.textContent = "Enter ↵";
+    row.append(inp, ok); out.appendChild(row);
+    setTimeout(() => { inp.focus(); row.scrollIntoView({ behavior: "smooth", block: "center" }); }, 50);
+    const finish = () => { const v = inp.value; row.remove(); write(v, "typed"); write("\n"); pendingInput = null; resolve(v); };
+    inp.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); finish(); } });
+    ok.onclick = finish;
+    pendingInput = { reject: err => { row.remove(); pendingInput = null; reject(err); } };
+  });
+}
+function builtinRead(x) { if (!Sk.builtinFiles || !Sk.builtinFiles.files[x]) throw "File not found: '" + x + "'"; return Sk.builtinFiles.files[x]; }
+
+async function run() {
+  if (running) { stopRequested = true; if (pendingInput) pendingInput.reject(new Error("__stopped__")); return; }
+  if (typeof Sk === "undefined") { showFeedback("bad", "Python didn't load", "Check your internet connection and reload the page."); return; }
+  const free = idx === M.length, m = M[idx];
+  running = true; stopRequested = false; errLine = 0; updateNums(); fb.hidden = true;
+  out.innerHTML = ""; let text = "";
+  const b = $("runBtn"); b.textContent = "■ Stop";
+  Sk.configure({ output: t => { text += t; write(t); }, read: builtinRead, inputfun: p => askInput(p).then(v => { text += (p || "") + v + "\n"; return v; }), inputfunTakesPrompt: true, __future__: Sk.python3, yieldLimit: 50, execLimit: null });
+  try {
+    await Sk.misceval.asyncToPromise(() => Sk.importMainWithBody("<stdin>", false, code.value, true), { "*": () => { if (stopRequested) throw new Error("__stopped__"); } });
+    if (!text.trim()) write("(nothing was printed)", "sys");
+    running = false;
+    if (free) { b.textContent = "▶ Run"; return; }
+    const r = m.check(text, code.value);
+    if (r === true) {
+      const first = !done.has(idx); done.add(idx); store.set("coach:done", [...done]);
+      $("doneNo").textContent = `${done.size} done`; $("bar").style.width = (done.size / M.length * 100) + "%";
+      showFeedback("ok", "✓ " + PRAISE[Math.floor(Math.random() * PRAISE.length)], idx === M.length - 1 ? "You finished every mission. You can officially write Python programs! Try Free play next." : "Mission complete. Try changing something else to see what happens, or go to the next mission.");
+      if (first) celebrate();
+      setRunMode(true);
+    } else {
+      fails++;
+      const extra = fails >= 2 ? `<div class="row"><button class="pill-btn" type="button" id="showAns">Show me the answer</button></div>` : "";
+      showFeedback("no", "Not quite yet", esc(r), extra);
+      if (fails >= 2) $("showAns").onclick = () => showFeedback("no", "Here's one answer", "Compare it with yours. Can you spot the difference?", `<pre class="solution">${esc(m.answer)}</pre>`);
+      setRunMode();
+    }
+  } catch (err) {
+    running = false;
+    if (String(err && err.message) === "__stopped__" || String(err).includes("__stopped__")) { write("\n■ Stopped", "sys"); free ? (b.textContent = "▶ Run") : setRunMode(); return; }
+    let msg = err && err.toString ? err.toString() : String(err), line = 0;
+    try { if (err.traceback && err.traceback.length) line = err.traceback[0].lineno; } catch {}
+    if (!line) { const mm = msg.match(/on line (\d+)/); if (mm) line = +mm[1]; }
+    msg = msg.replace(/ on line \d+/, "");
+    write((line ? `Error on line ${line}: ` : "Error: ") + msg, "error");
+    if (line) { errLine = line; updateNums(); }
+    fails++;
+    showFeedback("bad", "Oops, an error (that's normal!)", hintFor(msg), fails >= 2 && !free ? `<div class="row"><button class="pill-btn" type="button" id="hint2">💡 Show hint</button></div>` : "");
+    if (fails >= 2 && !free) $("hint2").onclick = () => $("hintBtn").click();
+    free ? (b.textContent = "▶ Run") : setRunMode();
+  }
+}
+
+render();
+window.addEventListener("resize", updateNums);
+</script>
