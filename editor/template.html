@@ -1,0 +1,327 @@
+<title>Python Practice Pad</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: a toolbar of lesson tabs above a two-pane workbench, code on the left, output on the right; stacks on phones. */
+:root {
+  --bg: #eef1f6;
+  --panel: #ffffff;
+  --line: #d5dbe6;
+  --fg: #1c2433;
+  --muted: #5d6980;
+  --accent: #2f5bd3;
+  --accent-fg: #ffffff;
+  --gutter: #f4f6fa;
+  --gutter-fg: #9aa4b8;
+  --ok: #1d7a4a;
+  --err: #b42318;
+  --err-bg: #fdecea;
+  --hint-bg: #fff6d9;
+  --hint-fg: #6b4e00;
+  --font-ui: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-code: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #11151d; --panel: #181e29; --line: #2a3344; --fg: #e3e8f2; --muted: #95a1b8;
+    --accent: #7c9cff; --accent-fg: #0d1220; --gutter: #141a24; --gutter-fg: #56627a;
+    --ok: #5fd39a; --err: #ff8a80; --err-bg: #3a1d1d; --hint-bg: #352c12; --hint-fg: #f3d27a;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #11151d; --panel: #181e29; --line: #2a3344; --fg: #e3e8f2; --muted: #95a1b8;
+  --accent: #7c9cff; --accent-fg: #0d1220; --gutter: #141a24; --gutter-fg: #56627a;
+  --ok: #5fd39a; --err: #ff8a80; --err-bg: #3a1d1d; --hint-bg: #352c12; --hint-fg: #f3d27a;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+body {
+  background: var(--bg); color: var(--fg); font-family: var(--font-ui); font-size: 15px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 14px;
+  box-sizing: border-box;
+  display: flex; flex-direction: column; gap: 12px;
+}
+header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+h1 { font-size: 18px; font-weight: 600; margin: 0; letter-spacing: -0.01em; }
+h1 span { color: var(--muted); font-weight: 400; }
+.tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+.tab {
+  font: inherit; font-size: 13px; border: 1px solid var(--line); background: var(--panel); color: var(--fg);
+  padding: 6px 11px; border-radius: 999px; cursor: pointer;
+}
+.tab[aria-selected="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.tab:focus-visible, button:focus-visible, textarea:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+main { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 12px; }
+.pane { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; display: flex; flex-direction: column; min-height: 0; min-width: 0; overflow: hidden; }
+.bar { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.bar .label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 600; margin-right: auto; }
+button.btn {
+  font: inherit; font-size: 13px; font-weight: 500; border-radius: 7px; padding: 6px 12px; cursor: pointer;
+  border: 1px solid var(--line); background: transparent; color: var(--fg);
+}
+button.run { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); font-weight: 600; padding: 6px 16px; }
+button.btn:disabled { opacity: 0.5; cursor: default; }
+button.danger { color: var(--err); border-color: var(--err); }
+.editor { flex: 1; min-height: 0; display: flex; overflow: auto; font-family: var(--font-code); font-size: 14px; line-height: 1.55; }
+.nums { background: var(--gutter); color: var(--gutter-fg); text-align: right; padding: 12px 8px 12px 10px; user-select: none; white-space: pre; font-variant-numeric: tabular-nums; min-height: 100%; box-sizing: border-box; flex: none; }
+.nums .bad { color: var(--err); font-weight: 600; }
+textarea#code {
+  flex: 1 0 auto; min-width: 0; border: 0; resize: none; padding: 12px; margin: 0; font: inherit; line-height: inherit;
+  background: transparent; color: var(--fg); white-space: pre; overflow: hidden; tab-size: 4; outline: none;
+}
+.out { flex: 1; min-height: 0; overflow: auto; padding: 12px; font-family: var(--font-code); font-size: 14px; line-height: 1.55; white-space: pre-wrap; word-break: break-word; }
+.out .sys { color: var(--muted); font-style: italic; }
+.out .done { color: var(--ok); }
+.out .error { display: block; background: var(--err-bg); color: var(--err); border-radius: 6px; padding: 8px 10px; margin-top: 6px; white-space: pre-wrap; }
+.out .hint { display: block; background: var(--hint-bg); color: var(--hint-fg); border-radius: 6px; padding: 8px 10px; margin-top: 6px; font-family: var(--font-ui); white-space: normal; }
+.out .typed { color: var(--accent); font-weight: 600; }
+.inrow { display: inline-flex; gap: 6px; align-items: center; }
+.inrow input { font: inherit; background: var(--bg); color: var(--fg); border: 1px solid var(--accent); border-radius: 5px; padding: 2px 8px; width: 12em; max-width: 60vw; }
+.status { font-size: 12px; color: var(--muted); }
+footer { font-size: 12px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 4px 16px; }
+kbd { font-family: var(--font-code); font-size: 11px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 4px; background: var(--panel); }
+@media (max-width: 760px) {
+  html, body { height: auto; }
+  main { grid-template-columns: minmax(0, 1fr); }
+  .editor { height: 52vh; }
+  .out { min-height: 30vh; max-height: 60vh; }
+}
+</style>
+
+<header>
+  <h1>Python Practice Pad <span>· your code saves automatically</span></h1>
+  <nav class="tabs" role="tablist" id="tabs"></nav>
+</header>
+
+<main>
+  <section class="pane">
+    <div class="bar">
+      <span class="label" id="fileLabel">Code</span>
+      <span class="status" id="saved"></span>
+      <button class="btn" id="resetBtn" type="button">Reset</button>
+      <button class="btn run" id="runBtn" type="button">▶ Run</button>
+    </div>
+    <div class="editor" id="editorBox">
+      <div class="nums" id="nums" aria-hidden="true">1</div>
+      <textarea id="code" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" aria-label="Python code"></textarea>
+    </div>
+  </section>
+  <section class="pane">
+    <div class="bar">
+      <span class="label">Output</span>
+      <button class="btn" id="stopBtn" type="button" disabled>■ Stop</button>
+      <button class="btn" id="clearBtn" type="button">Clear</button>
+    </div>
+    <div class="out" id="out" aria-live="polite"><span class="sys">Press ▶ Run to see what your code does.</span></div>
+  </section>
+</main>
+
+<footer>
+  <span><kbd>Ctrl</kbd>/<kbd>⌘</kbd> + <kbd>Enter</kbd> runs your code</span>
+  <span><kbd>Tab</kbd> indents 4 spaces</span>
+  <span>Reset puts the lesson back to how it started</span>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/skulpt@1.2.0/dist/skulpt.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/skulpt@1.2.0/dist/skulpt-stdlib.js"></script>
+<script>
+const LESSONS = __LESSONS__;
+
+const $ = id => document.getElementById(id);
+const code = $("code"), nums = $("nums"), out = $("out");
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); return true; } catch { return false; } },
+  del(k) { try { localStorage.removeItem(k); } catch {} }
+};
+let current = store.get("pad:tab") || LESSONS[0].id;
+if (!LESSONS.some(l => l.id === current)) current = LESSONS[0].id;
+let running = false, stopRequested = false, errLine = 0;
+
+// ---------- tabs ----------
+function renderTabs() {
+  $("tabs").innerHTML = "";
+  for (const l of LESSONS) {
+    const b = document.createElement("button");
+    b.className = "tab"; b.type = "button"; b.role = "tab"; b.id = "tab-" + l.id;
+    b.textContent = l.name;
+    b.setAttribute("aria-selected", l.id === current);
+    b.onclick = () => switchTo(l.id);
+    $("tabs").appendChild(b);
+  }
+}
+function lesson() { return LESSONS.find(l => l.id === current); }
+function switchTo(id) {
+  if (running) stopRequested = true;
+  save();
+  current = id; store.set("pad:tab", id);
+  renderTabs(); load();
+}
+function load() {
+  const l = lesson();
+  code.value = store.get("pad:code:" + l.id) ?? l.code;
+  $("fileLabel").textContent = l.file;
+  errLine = 0; disarmReset(); updateNums(); $("saved").textContent = "";
+  code.scrollTop = 0; $("editorBox").scrollTop = 0;
+}
+let saveTimer;
+function save() {
+  const ok = store.set("pad:code:" + current, code.value);
+  $("saved").textContent = ok ? "Saved" : "";
+}
+code.addEventListener("input", () => {
+  errLine = 0; updateNums();
+  clearTimeout(saveTimer); $("saved").textContent = "Saving…";
+  saveTimer = setTimeout(save, 400);
+});
+
+// ---------- line numbers ----------
+function updateNums() {
+  const n = code.value.split("\n").length;
+  let s = "";
+  for (let i = 1; i <= n; i++) s += (i === errLine ? '<span class="bad">' + i + '</span>' : i) + "\n";
+  nums.innerHTML = s;
+  code.style.height = "auto";
+  code.style.height = code.scrollHeight + "px";
+  code.style.width = "";
+  if (code.scrollWidth > code.clientWidth) code.style.width = (code.scrollWidth + 4) + "px";
+}
+
+// ---------- editor keys ----------
+code.addEventListener("keydown", e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); run(); return; }
+  const { selectionStart: s, selectionEnd: en, value: v } = code;
+  if (e.key === "Tab") {
+    e.preventDefault();
+    if (e.shiftKey) {
+      const ls = v.lastIndexOf("\n", s - 1) + 1;
+      const m = v.slice(ls).match(/^ {1,4}/);
+      if (m) { code.setRangeText("", ls, ls + m[0].length, "end"); code.selectionStart = code.selectionEnd = Math.max(ls, s - m[0].length); }
+    } else code.setRangeText("    ", s, en, "end");
+    code.dispatchEvent(new Event("input"));
+  } else if (e.key === "Enter" && !e.isComposing) {
+    const ls = v.lastIndexOf("\n", s - 1) + 1;
+    const line = v.slice(ls, s);
+    let indent = line.match(/^ */)[0];
+    if (/:\s*(#.*)?$/.test(line)) indent += "    ";
+    e.preventDefault();
+    code.setRangeText("\n" + indent, s, en, "end");
+    code.dispatchEvent(new Event("input"));
+  }
+});
+
+// ---------- reset (two-step, no dialogs) ----------
+let resetArmed = false, resetTimer;
+function disarmReset() { resetArmed = false; $("resetBtn").textContent = "Reset"; $("resetBtn").classList.remove("danger"); }
+$("resetBtn").onclick = () => {
+  if (!resetArmed) {
+    resetArmed = true; $("resetBtn").textContent = "Click again to reset"; $("resetBtn").classList.add("danger");
+    clearTimeout(resetTimer); resetTimer = setTimeout(disarmReset, 3000); return;
+  }
+  store.del("pad:code:" + current); load(); $("saved").textContent = "Reset to original";
+};
+
+// ---------- output ----------
+function write(text, cls) {
+  const span = document.createElement("span");
+  if (cls) span.className = cls;
+  span.textContent = text;
+  out.appendChild(span);
+  out.scrollTop = out.scrollHeight;
+  return span;
+}
+$("clearBtn").onclick = () => { out.innerHTML = ""; };
+$("stopBtn").onclick = () => { stopRequested = true; if (pendingInput) pendingInput.reject(new Error("__stopped__")); };
+
+let pendingInput = null;
+function askInput(prompt) {
+  return new Promise((resolve, reject) => {
+    if (prompt) write(String(prompt));
+    const row = document.createElement("span"); row.className = "inrow";
+    const inp = document.createElement("input"); inp.type = "text"; inp.id = "pyinput"; inp.setAttribute("aria-label", "Type your answer and press Enter");
+    inp.placeholder = "type, then Enter";
+    const ok = document.createElement("button"); ok.className = "btn"; ok.type = "button"; ok.textContent = "Enter";
+    row.append(inp, ok); out.appendChild(row); out.scrollTop = out.scrollHeight;
+    setTimeout(() => inp.focus({ preventScroll: true }), 0);
+    const finish = () => {
+      const val = inp.value; row.remove();
+      write(val, "typed"); write("\n");
+      pendingInput = null; resolve(val);
+    };
+    inp.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); finish(); } });
+    ok.onclick = finish;
+    pendingInput = { reject: err => { row.remove(); pendingInput = null; reject(err); } };
+  });
+}
+
+// ---------- friendly error hints ----------
+function hintFor(msg) {
+  const m = msg;
+  if (/IndentationError|unindent|expected an indented block/i.test(m)) return "Python cares about spaces at the start of a line. Lines inside an if, for, while or def need to be indented (pushed right with Tab), and lines in the same block must line up exactly.";
+  if (/EOF in multi-line string|EOL while scanning|unterminated string/i.test(m)) return "A piece of text is missing its closing quote. Every \" needs a partner \" at the end.";
+  if (/SyntaxError/.test(m)) return "Python couldn't read this line. Common causes: a missing colon (:) at the end of an if, for, while or def line, a missing closing bracket ), or a missing quote.";
+  if (/NameError/.test(m)) { const n = (m.match(/name '([^']+)'/) || [])[1]; return (n ? "Python doesn't know what “" + n + "” is. " : "Python doesn't know this name. ") + "Check the spelling (capitals matter!), make sure you created the variable before using it, and put quotes around text."; }
+  if (/invalid literal for int/.test(m)) return "int() can only turn digits like \"42\" into a number. Words like \"hello\" can't become a number, so Python stopped.";
+  if (/TypeError/.test(m) && /concatenate|unsupported operand/.test(m)) return "You're mixing text and numbers. Use a comma inside print(\"Age:\", age), or turn the number into text with str(age).";
+  if (/TypeError/.test(m)) return "Something was given the wrong kind of value, or a function got the wrong number of inputs. Check what you pass inside the brackets.";
+  if (/IndexError/.test(m)) return "You asked for a list position that doesn't exist. Remember lists start at 0, so a list of 3 items has positions 0, 1 and 2.";
+  if (/ZeroDivisionError/.test(m)) return "You can't divide by zero, even in Python!";
+  if (/AttributeError/.test(m)) return "That thing doesn't have the ability you asked for. Check the spelling after the dot, for example .append not .add.";
+  if (/TimeLimitError|too long/i.test(m)) return "Your program ran for a long time. Is there a loop that never ends? Press Stop if needed.";
+  return "";
+}
+
+// ---------- run ----------
+function builtinRead(x) {
+  if (Sk.builtinFiles === undefined || Sk.builtinFiles.files[x] === undefined) throw "File not found: '" + x + "'";
+  return Sk.builtinFiles.files[x];
+}
+async function run() {
+  if (running) return;
+  if (typeof Sk === "undefined") { out.innerHTML = ""; write("Python couldn't load. Check your internet connection and reload the page.", "error"); return; }
+  save();
+  running = true; stopRequested = false; errLine = 0; updateNums();
+  $("runBtn").disabled = true; $("stopBtn").disabled = false;
+  out.innerHTML = "";
+  Sk.configure({
+    output: t => write(t),
+    read: builtinRead,
+    inputfun: askInput,
+    inputfunTakesPrompt: true,
+    __future__: Sk.python3,
+    yieldLimit: 50,
+    execLimit: null
+  });
+  try {
+    await Sk.misceval.asyncToPromise(
+      () => Sk.importMainWithBody("<stdin>", false, code.value, true),
+      { "*": () => { if (stopRequested) throw new Error("__stopped__"); } }
+    );
+    write("\n✓ Finished", "done");
+  } catch (err) {
+    const text = String(err && err.message === "__stopped__" ? "__stopped__" : err);
+    if (text.includes("__stopped__")) { write("\n■ Stopped", "sys"); }
+    else {
+      let msg = err && err.toString ? err.toString() : String(err);
+      let line = 0;
+      try { if (err.traceback && err.traceback.length) line = err.traceback[0].lineno; } catch {}
+      if (!line) { const mm = msg.match(/on line (\d+)/); if (mm) line = +mm[1]; }
+      msg = msg.replace(/ on line \d+/, "");
+      write((line ? "Error on line " + line + ":\n" : "Error:\n") + msg, "error");
+      const h = hintFor(msg);
+      if (h) write("💡 " + h, "hint");
+      if (line) { errLine = line; updateNums(); }
+    }
+  } finally {
+    running = false; $("runBtn").disabled = false; $("stopBtn").disabled = true;
+  }
+}
+$("runBtn").onclick = run;
+
+renderTabs(); load();
+window.addEventListener("resize", updateNums);
+</script>
