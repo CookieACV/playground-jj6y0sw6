@@ -1,0 +1,23 @@
+; Godot 4 project file. Open this folder in Godot 4.3 or newer.
+
+config_version=5
+
+[application]
+
+config/name="Team Up RPG Starter"
+run/main_scene="res://scenes/overworld.tscn"
+config/features=PackedStringArray("4.3")
+
+[autoload]
+
+Game="*res://scripts/game.gd"
+
+[display]
+
+window/size/viewport_width=640
+window/size/viewport_height=480
+window/stretch/mode="canvas_items"
+
+[rendering]
+
+textures/canvas_textures/default_texture_filter=0

@@ -1,0 +1,100 @@
+[gd_scene load_steps=11 format=3]
+
+[ext_resource type="Script" path="res://scripts/overworld.gd" id="1_world"]
+[ext_resource type="PackedScene" path="res://scenes/player.tscn" id="2_player"]
+[ext_resource type="PackedScene" path="res://scenes/ally.tscn" id="3_ally"]
+[ext_resource type="PackedScene" path="res://scenes/dialogue_box.tscn" id="4_dialogue"]
+[ext_resource type="Script" path="res://scripts/danger_zone.gd" id="5_danger"]
+[ext_resource type="Script" path="res://scripts/end_gate.gd" id="6_gate"]
+[ext_resource type="Texture2D" path="res://assets/enemy.png" id="7_enemy"]
+
+[sub_resource type="RectangleShape2D" id="Shape_horizontal_wall"]
+size = Vector2(1600, 40)
+
+[sub_resource type="RectangleShape2D" id="Shape_side_wall"]
+size = Vector2(40, 480)
+
+[sub_resource type="RectangleShape2D" id="Shape_trigger"]
+size = Vector2(30, 240)
+
+[node name="Overworld" type="Node2D"]
+script = ExtResource("1_world")
+
+[node name="Background" type="ColorRect" parent="."]
+offset_right = 1600.0
+offset_bottom = 480.0
+color = Color(0.08, 0.06, 0.12, 1)
+
+[node name="Ground" type="ColorRect" parent="."]
+offset_top = 140.0
+offset_right = 1600.0
+offset_bottom = 380.0
+color = Color(0.35, 0.27, 0.45, 1)
+
+[node name="BadArea" type="ColorRect" parent="."]
+offset_left = 1220.0
+offset_top = 140.0
+offset_right = 1600.0
+offset_bottom = 380.0
+color = Color(0.45, 0.15, 0.2, 1)
+
+[node name="StartSign" type="Label" parent="."]
+offset_left = 30.0
+offset_top = 100.0
+offset_right = 330.0
+offset_bottom = 130.0
+theme_override_font_sizes/font_size = 18
+text = "START  (arrows = move, Enter = talk)"
+
+[node name="BadSign" type="Label" parent="."]
+offset_left = 1300.0
+offset_top = 100.0
+offset_right = 1590.0
+offset_bottom = 130.0
+theme_override_font_sizes/font_size = 18
+text = "BAD GUY AREA  -->"
+
+[node name="Walls" type="StaticBody2D" parent="."]
+
+[node name="Top" type="CollisionShape2D" parent="Walls"]
+position = Vector2(800, 120)
+shape = SubResource("Shape_horizontal_wall")
+
+[node name="Bottom" type="CollisionShape2D" parent="Walls"]
+position = Vector2(800, 400)
+shape = SubResource("Shape_horizontal_wall")
+
+[node name="Left" type="CollisionShape2D" parent="Walls"]
+position = Vector2(-20, 240)
+shape = SubResource("Shape_side_wall")
+
+[node name="Right" type="CollisionShape2D" parent="Walls"]
+position = Vector2(1620, 240)
+shape = SubResource("Shape_side_wall")
+
+[node name="Enemy" type="Sprite2D" parent="."]
+position = Vector2(1320, 250)
+scale = Vector2(2, 2)
+texture = ExtResource("7_enemy")
+
+[node name="DangerZone" type="Area2D" parent="."]
+position = Vector2(1240, 260)
+script = ExtResource("5_danger")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="DangerZone"]
+shape = SubResource("Shape_trigger")
+
+[node name="EndGate" type="Area2D" parent="."]
+position = Vector2(1570, 260)
+script = ExtResource("6_gate")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="EndGate"]
+shape = SubResource("Shape_trigger")
+
+[node name="Player" parent="." instance=ExtResource("2_player")]
+position = Vector2(100, 250)
+
+[node name="Ally" parent="." instance=ExtResource("3_ally")]
+position = Vector2(650, 230)
+
+[node name="DialogueBox" parent="." instance=ExtResource("4_dialogue")]

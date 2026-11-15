@@ -1,0 +1,29 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/dialogue_box.gd" id="1_script"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_1"]
+bg_color = Color(0, 0, 0, 1)
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+border_color = Color(1, 1, 1, 1)
+
+[node name="DialogueBox" type="CanvasLayer" groups=["dialogue"]]
+script = ExtResource("1_script")
+
+[node name="Panel" type="Panel" parent="."]
+offset_left = 20.0
+offset_top = 330.0
+offset_right = 620.0
+offset_bottom = 465.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_1")
+
+[node name="Label" type="Label" parent="Panel"]
+offset_left = 20.0
+offset_top = 14.0
+offset_right = 580.0
+offset_bottom = 120.0
+theme_override_font_sizes/font_size = 20
+autowrap_mode = 3
