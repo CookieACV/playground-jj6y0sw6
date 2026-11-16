@@ -428,7 +428,7 @@ func _draw():
 		draw_string(font, Vector2(r.position.x, r.position.y + 37), BUTTONS[i], HORIZONTAL_ALIGNMENT_CENTER, r.size.x, 22, col)
 
 
-func draw_boss(c: Vector2, t: float):
+func draw_boss(c: Vector2, _t: float):
 	if shake > 0.0:
 		c += Vector2(randf_range(-6, 6), randf_range(-3, 3))
 	var happy = calm >= 100
