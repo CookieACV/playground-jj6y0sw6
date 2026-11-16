@@ -1,0 +1,847 @@
+<title>Nova's Adventure Code</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;600&family=JetBrains+Mono:wght@400&display=swap">
+<style>
+/* Layout: one reading column: steps first, then two code panels with big copy buttons. */
+:root {
+  --bg: #f3f4f1; --panel: #ffffff; --ink: #1b1d1a; --muted: #5f6659; --line: #d9dcd3;
+  --accent: #e0461b; --accent-ink: #ffffff; --code-bg: #15171a; --code-ink: #e6e8e3; --ok: #2f8a3e;
+  --font-display: "Space Grotesk", system-ui, sans-serif; --font-body: "Inter", system-ui, sans-serif;
+  --font-code: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #121412; --panel: #1b1e1b; --ink: #ecefe8; --muted: #a2a99c; --line: #2e332d;
+  --accent: #ff6a3d; --accent-ink: #160a05; --code-bg: #0b0c0d; --code-ink: #e6e8e3; --ok: #5fc46f; color-scheme: dark; } }
+:root[data-theme="dark"] { --bg: #121412; --panel: #1b1e1b; --ink: #ecefe8; --muted: #a2a99c; --line: #2e332d;
+  --accent: #ff6a3d; --accent-ink: #160a05; --code-bg: #0b0c0d; --code-ink: #e6e8e3; --ok: #5fc46f; color-scheme: dark; }
+body { background: var(--bg); color: var(--ink); font: 16px/1.55 var(--font-body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 28px 60px; }
+main { max-width: 900px; margin: 0 auto; display: flex; flex-direction: column; gap: 28px; }
+h1 { font: 700 clamp(30px, 5vw, 44px)/1.05 var(--font-display); margin: 0; letter-spacing: -0.02em; text-wrap: balance; }
+h2 { font: 700 24px/1.2 var(--font-display); margin: 0; }
+.lead { color: var(--muted); margin: 8px 0 0; max-width: 65ch; }
+img.hero { width: 100%; border-radius: 12px; border: 1px solid var(--line); display: block; }
+ol.steps { margin: 0; padding-left: 1.3em; display: grid; gap: 10px; }
+ol.steps li { padding-left: 4px; }
+kbd { font: 13px var(--font-code); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 5px; padding: 1px 6px; background: var(--panel); }
+.controls { display: flex; flex-wrap: wrap; gap: 8px 18px; color: var(--muted); font-size: 15px; }
+.file { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; min-width: 0; }
+.file header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+.file header div { margin-right: auto; min-width: 0; }
+.file header b { font: 700 18px var(--font-display); }
+.file header span { display: block; color: var(--muted); font-size: 14px; }
+button.copy { font: 600 16px var(--font-body); background: var(--accent); color: var(--accent-ink); border: 0; border-radius: 9px; padding: 11px 20px; cursor: pointer; }
+button.copy:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+button.copy.done { background: var(--ok); }
+pre { margin: 0; max-height: 420px; overflow: auto; background: var(--code-bg); color: var(--code-ink); font: 13px/1.5 var(--font-code); padding: 16px; tab-size: 4; }
+.note { color: var(--muted); font-size: 14px; }
+</style>
+<main>
+  <div>
+    <h1>Nova's Adventure</h1>
+    <p class="lead">A 2D adventure for Xogot: walk around Glowmoss Village, talk to Pip, Mossy, Bolt and Rocco, and fight or befriend the bosses.</p>
+  </div>
+  
+  <section>
+    <h2>Steps</h2>
+    <ol class="steps">
+      <li>In Xogot, make a <b>New Project</b>. In the Scene panel tap <b>2D Scene</b>.</li>
+      <li>Tap the <b>Node2D</b> → <b>Attach Script</b> → <b>Create</b>.</li>
+      <li>Select everything in the new script and delete it. Tap <b>Copy game code</b> below and paste.</li>
+      <li>If you see a "mixed tabs and spaces" error: <b>Edit → Indentation → Convert Indent to Tabs</b>.</li>
+      <li>Save the scene, then tap <b>▶ Play</b>. If it asks for a main scene, choose <b>Select Current</b>.</li>
+    </ol>
+  </section>
+  <section>
+    <h2>How to play</h2>
+    <div class="controls">
+      <span>Drag the <b>left side</b> of the screen to walk</span><span><b>TALK</b> button to talk</span><span>Tap to read on</span>
+      <span>In fights: tap <b>FIGHT / ACT / ITEM / SPARE</b>, drag to dodge</span><span>Keyboard: arrows + Enter</span>
+    </div>
+    <p class="note">Bolt lives by the lake (top right). Rocco guards the path in the south-east. Mossy gives you a healing muffin. Be nice to fill a boss's blue calm bar, then SPARE for the friendship ending.</p>
+  </section>
+  <section class="file">
+    <header><div><b>adventure.gd</b><span>The whole game in one script. Goes on the scene's root Node2D.</span></div>
+      <button class="copy" type="button" data-target="game-code" id="copy-game">Copy game code</button></header>
+    <pre id="game-code">extends Node2D
+# =========================================================
+#  NOVA&#x27;S ADVENTURE
+#  Walk: drag on the LEFT side of the screen (or arrow keys)
+#  Talk: tap TALK (or press Enter). Some characters want to fight!
+#  Battles: tap FIGHT / ACT / ITEM / SPARE, drag to dodge.
+# =========================================================
+
+const TILE := 48
+const W := 40
+const H := 30
+
+var grid: Array = []          # 0 grass, 1 tree, 2 water, 3 path, 4 flower, 5 house
+var houses: Array = []
+var font: Font
+var rng := RandomNumberGenerator.new()
+
+# ---------- player ----------
+var player := Vector2.ZERO
+var cam := Vector2.ZERO
+var max_hp := 20
+var hp := 20
+var items: Array = [[&quot;Starfruit&quot;, 12]]
+
+# ---------- touch controls ----------
+var joy_index := -1
+var joy_origin := Vector2.ZERO
+var joy_vec := Vector2.ZERO
+
+# ---------- talking ----------
+var state := &quot;walk&quot;     # walk, talk, choice | menu, act, item, fight, dodge, end
+var in_battle := false
+var lines: Array = []
+var line_index := 0
+var chars := 0.0
+var after_talk := &quot;walk&quot;
+var choice_npc := &quot;&quot;
+
+# ---------- characters ----------
+var npcs := {
+	&quot;pip&quot;: {&quot;name&quot;: &quot;PIP&quot;, &quot;kind&quot;: &quot;mushroom&quot;, &quot;tile&quot;: Vector2(9, 10), &quot;status&quot;: &quot;&quot;,
+		&quot;lines&quot;: [&quot;PIP: Hi Nova! Welcome to Glowmoss Village!&quot;, &quot;PIP: BOLT lives by the lake. He&#x27;s SO grumpy.&quot;,
+			&quot;PIP: Tip: being nice can calm monsters down!&quot;]},
+	&quot;mossy&quot;: {&quot;name&quot;: &quot;MOSSY&quot;, &quot;kind&quot;: &quot;turtle&quot;, &quot;tile&quot;: Vector2(18, 10), &quot;status&quot;: &quot;&quot;,
+		&quot;lines&quot;: [&quot;MOSSY: Going on an adventure, little star?&quot;, &quot;MOSSY: Take my famous Moss Muffin.&quot;,
+			&quot;* You got a Moss Muffin! (+10 HP)&quot;],
+		&quot;after&quot;: [&quot;MOSSY: Slow and steady, kiddo. Slow and steady.&quot;]},
+	&quot;bolt&quot;: {&quot;name&quot;: &quot;BOLT&quot;, &quot;kind&quot;: &quot;cloud&quot;, &quot;tile&quot;: Vector2(29, 13), &quot;status&quot;: &quot;&quot;,
+		&quot;lines&quot;: [&quot;BOLT: HEY! This is MY lake!&quot;, &quot;BOLT: You wanna fight about it?&quot;],
+		&quot;won&quot;: [&quot;* Bolt is just a little puff of mist now...&quot;],
+		&quot;friend&quot;: [&quot;BOLT: Hey friend! Wanna watch me make a rainbow?&quot;]},
+	&quot;rocco&quot;: {&quot;name&quot;: &quot;ROCCO&quot;, &quot;kind&quot;: &quot;rock&quot;, &quot;tile&quot;: Vector2(31, 24), &quot;status&quot;: &quot;&quot;,
+		&quot;lines&quot;: [&quot;ROCCO: ...&quot;, &quot;ROCCO: Rocco guard this path. Nobody pass.&quot;, &quot;ROCCO: You fight Rocco?&quot;],
+		&quot;won&quot;: [&quot;* Rocco is resting. He looks sleepy.&quot;],
+		&quot;friend&quot;: [&quot;ROCCO: Rocco and Nova... friends. Rocco happy.&quot;]},
+}
+
+# ---------- bosses ----------
+var bosses := {
+	&quot;bolt&quot;: {&quot;hp&quot;: 60, &quot;attacks&quot;: [&quot;rain&quot;, &quot;lightning&quot;, &quot;wind&quot;],
+		&quot;intro&quot;: [&quot;* BOLT crackles with thunder!&quot;, &quot;BOLT: Leave now, little star, or get ZAPPED!&quot;],
+		&quot;acts&quot;: [[&quot;Tell a joke&quot;, 35, [&quot;* Why did the cloud break up with the fog?&quot;, &quot;* \&quot;It needed more SPACE.\&quot;&quot;, &quot;BOLT: ...pfft. Terrible. Hehe.&quot;]],
+			[&quot;Compliment&quot;, 25, [&quot;* You say his thunder sounds awesome.&quot;, &quot;BOLT: R-really? Nobody says that...&quot;]],
+			[&quot;Offer umbrella&quot;, 20, [&quot;* You offer a tiny umbrella.&quot;, &quot;BOLT: For ME? ...I&#x27;ll go easy this turn.&quot;]]],
+		&quot;win&quot;: &quot;BOLT fizzles into mist. The lake is quiet now.&quot;,
+		&quot;friend&quot;: &quot;BOLT smiles. The clouds part and a rainbow appears!&quot;},
+	&quot;rocco&quot;: {&quot;hp&quot;: 80, &quot;attacks&quot;: [&quot;rocks&quot;, &quot;boulders&quot;, &quot;pebbles&quot;],
+		&quot;intro&quot;: [&quot;* The ground shakes!&quot;, &quot;ROCCO: Rocco... SMASH!&quot;],
+		&quot;acts&quot;: [[&quot;Pat his head&quot;, 30, [&quot;* You pat Rocco&#x27;s head. It&#x27;s warm from the sun.&quot;, &quot;ROCCO: ...nice.&quot;]],
+			[&quot;Show a shiny pebble&quot;, 35, [&quot;* You show Rocco a shiny pebble.&quot;, &quot;ROCCO: OOOH. Shiny!&quot;]],
+			[&quot;Ask his name&quot;, 25, [&quot;* You ask about him.&quot;, &quot;ROCCO: Rocco is Rocco. Nobody ask before.&quot;]]],
+		&quot;win&quot;: &quot;ROCCO crumbles into a pile of pebbles... then starts snoring.&quot;,
+		&quot;friend&quot;: &quot;ROCCO gives you a big, gravelly hug.&quot;},
+}
+
+# ---------- battle state ----------
+var boss_id := &quot;&quot;
+var boss_hp := 0
+var boss_max := 0
+var calm := 0
+var turn := 0
+var easy := 0
+var options: Array = []
+var bar_t := 0.0
+var shake := 0.0
+var result := &quot;&quot;
+var end_text := &quot;&quot;
+var box := Rect2()
+var star := Vector2.ZERO
+var hurt := 0.0
+var bullets: Array = []
+var attack := &quot;&quot;
+var dodge_time := 0.0
+var spawn_timer := 0.0
+var side := 1.0
+const BUTTONS = [&quot;FIGHT&quot;, &quot;ACT&quot;, &quot;ITEM&quot;, &quot;SPARE&quot;]
+
+
+func _ready():
+	RenderingServer.set_default_clear_color(Color(0.02, 0.02, 0.06))
+	font = ThemeDB.fallback_font
+	make_world()
+	player = Vector2(12.5, 15.5) * TILE
+	say([&quot;* Welcome to Glowmoss Village!&quot;, &quot;* Drag on the left side to walk. Tap TALK near someone to talk.&quot;], &quot;walk&quot;)
+
+
+# ================= WORLD MAP =================
+
+func make_world():
+	rng.seed = 7
+	grid = []
+	for y in H:
+		var row = []
+		for x in W:
+			row.append(1 if x == 0 or y == 0 or x == W - 1 or y == H - 1 else 0)
+		grid.append(row)
+	for y in H:                                   # lake
+		for x in W:
+			if pow((x - 31) / 6.0, 2) + pow((y - 7) / 4.0, 2) &lt; 1.0:
+				grid[y][x] = 2
+	for x in range(2, W - 2):                     # paths
+		grid[15][x] = 3
+	for y in range(3, H - 2):
+		grid[y][12] = 3
+	for y in range(15, 26):
+		grid[y][31] = 3
+	houses = [Rect2i(4, 5, 4, 3), Rect2i(15, 5, 4, 3), Rect2i(4, 19, 4, 3)]
+	for hs in houses:
+		for y in range(hs.position.y, hs.end.y):
+			for x in range(hs.position.x, hs.end.x):
+				grid[y][x] = 5
+	for i in 260:                                 # trees and flowers
+		var x = rng.randi_range(1, W - 2)
+		var y = rng.randi_range(1, H - 2)
+		if grid[y][x] != 0 or Vector2(x, y).distance_to(Vector2(12, 15)) &lt; 4:
+			continue
+		var near_npc = false
+		for id in npcs:
+			if Vector2(x, y).distance_to(npcs[id][&quot;tile&quot;]) &lt; 3:
+				near_npc = true
+		if near_npc:
+			continue
+		grid[y][x] = 1 if i % 3 == 0 else 4
+
+
+func solid(p: Vector2) -&gt; bool:
+	var x = int(floor(p.x / TILE))
+	var y = int(floor(p.y / TILE))
+	if x &lt; 0 or y &lt; 0 or x &gt;= W or y &gt;= H:
+		return true
+	return grid[y][x] in [1, 2, 5]
+
+
+func blocked(p: Vector2) -&gt; bool:
+	for o in [Vector2(-14, -10), Vector2(14, -10), Vector2(-14, 14), Vector2(14, 14)]:
+		if solid(p + o):
+			return true
+	for id in npcs:
+		if p.distance_to(npc_pos(id)) &lt; 34.0:
+			return true
+	return false
+
+
+func npc_pos(id) -&gt; Vector2:
+	return (npcs[id][&quot;tile&quot;] + Vector2(0.5, 0.5)) * TILE
+
+
+func nearest_npc() -&gt; String:
+	for id in npcs:
+		if player.distance_to(npc_pos(id)) &lt; 70.0:
+			return id
+	return &quot;&quot;
+
+
+# ================= TALKING =================
+
+func say(new_lines: Array, then: String):
+	lines = new_lines
+	line_index = 0
+	chars = 0.0
+	after_talk = then
+	state = &quot;talk&quot;
+
+
+func advance_text():
+	if chars &lt; lines[line_index].length():
+		chars = lines[line_index].length()
+		return
+	line_index += 1
+	chars = 0.0
+	if line_index &lt; lines.size():
+		return
+	if after_talk.begins_with(&quot;ask:&quot;):
+		choice_npc = after_talk.substr(4)
+		state = &quot;choice&quot;
+	elif after_talk == &quot;dodge&quot;:
+		start_dodge()
+	else:
+		state = after_talk
+
+
+func talk_to(id: String):
+	var n = npcs[id]
+	if id == &quot;mossy&quot;:
+		if n[&quot;status&quot;] == &quot;&quot;:
+			n[&quot;status&quot;] = &quot;given&quot;
+			items.append([&quot;Moss Muffin&quot;, 10])
+			say(n[&quot;lines&quot;], &quot;walk&quot;)
+		else:
+			say(n[&quot;after&quot;], &quot;walk&quot;)
+	elif n.has(&quot;won&quot;) and n[&quot;status&quot;] != &quot;&quot;:
+		say(n[n[&quot;status&quot;]], &quot;walk&quot;)
+	elif n.has(&quot;won&quot;):
+		say(n[&quot;lines&quot;], &quot;ask:&quot; + id)
+	else:
+		say(n[&quot;lines&quot;], &quot;walk&quot;)
+
+
+func pressed_talk():
+	match state:
+		&quot;walk&quot;:
+			var id = nearest_npc()
+			if id != &quot;&quot;:
+				talk_to(id)
+		&quot;talk&quot;:
+			advance_text()
+
+
+# ================= INPUT =================
+
+func _input(event):
+	var s = get_viewport_rect().size
+	var touch = DisplayServer.is_touchscreen_available()
+	if event.is_action_pressed(&quot;ui_accept&quot;):
+		if state == &quot;choice&quot;:
+			start_battle(choice_npc)
+		elif in_battle:
+			on_tap(Vector2(-1, -1))
+		else:
+			pressed_talk()
+		return
+	if event.is_action_pressed(&quot;ui_cancel&quot;) and state == &quot;choice&quot;:
+		say([&quot;* You walk away.&quot;], &quot;walk&quot;)
+		return
+	if in_battle and state == &quot;dodge&quot;:
+		if event is InputEventScreenDrag:
+			star += event.relative
+		elif event is InputEventMouseMotion and not touch and Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
+			star += event.relative
+		return
+	var tap = null
+	if event is InputEventScreenTouch:
+		if event.pressed:
+			if not in_battle and state == &quot;walk&quot; and event.position.x &lt; s.x * 0.5 and not talk_button().has_point(event.position):
+				joy_index = event.index
+				joy_origin = event.position
+				joy_vec = Vector2.ZERO
+			else:
+				tap = event.position
+		elif event.index == joy_index:
+			joy_index = -1
+			joy_vec = Vector2.ZERO
+	elif event is InputEventScreenDrag and event.index == joy_index:
+		joy_vec = ((event.position - joy_origin) / 60.0).limit_length(1.0)
+	elif not touch and event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		tap = event.position
+	if tap != null:
+		on_tap(tap)
+
+
+func on_tap(p: Vector2):
+	if not in_battle:
+		if state == &quot;choice&quot;:
+			if yes_rect().has_point(p):
+				start_battle(choice_npc)
+			elif no_rect().has_point(p):
+				say([&quot;* You walk away.&quot;], &quot;walk&quot;)
+		elif talk_button().has_point(p) or state == &quot;talk&quot;:
+			pressed_talk()
+		return
+	match state:
+		&quot;talk&quot;:
+			advance_text()
+		&quot;menu&quot;:
+			for i in BUTTONS.size():
+				if button_rect(i).has_point(p):
+					choose(i)
+		&quot;act&quot;, &quot;item&quot;:
+			var i = row_at(p)
+			if i &gt;= 0 and i &lt; options.size():
+				if state == &quot;act&quot;:
+					do_act(i)
+				else:
+					use_item(i)
+		&quot;fight&quot;:
+			strike()
+		&quot;end&quot;:
+			leave_battle()
+
+
+# ================= EVERY FRAME =================
+
+func _process(delta):
+	queue_redraw()
+	var s = get_viewport_rect().size
+	if state == &quot;talk&quot;:
+		chars += delta * 45.0
+	if in_battle:
+		battle_process(delta)
+		return
+	if state == &quot;walk&quot;:
+		var dir = Input.get_vector(&quot;ui_left&quot;, &quot;ui_right&quot;, &quot;ui_up&quot;, &quot;ui_down&quot;) + joy_vec
+		dir = dir.limit_length(1.0)
+		var move = dir * 210.0 * delta
+		if not blocked(player + Vector2(move.x, 0)):
+			player.x += move.x
+		if not blocked(player + Vector2(0, move.y)):
+			player.y += move.y
+	cam = player - s / 2.0
+	cam.x = clamp(cam.x, 0.0, max(W * TILE - s.x, 0.0))
+	cam.y = clamp(cam.y, 0.0, max(H * TILE - s.y, 0.0))
+
+
+# ================= BATTLE =================
+
+func start_battle(id: String):
+	in_battle = true
+	boss_id = id
+	boss_max = bosses[id][&quot;hp&quot;]
+	boss_hp = boss_max
+	calm = 0
+	turn = 0
+	easy = 0
+	hp = max_hp
+	bullets.clear()
+	say(bosses[id][&quot;intro&quot;], &quot;menu&quot;)
+
+
+func leave_battle():
+	in_battle = false
+	bullets.clear()
+	if result == &quot;lose&quot;:
+		player = Vector2(12.5, 15.5) * TILE
+		hp = max_hp
+		say([&quot;* You wake up back in the village. Try again!&quot;], &quot;walk&quot;)
+	else:
+		npcs[boss_id][&quot;status&quot;] = result
+		say([&quot;* &quot; + (&quot;You won!&quot; if result == &quot;won&quot; else &quot;You made a new friend!&quot;)], &quot;walk&quot;)
+
+
+func choose(i: int):
+	match BUTTONS[i]:
+		&quot;FIGHT&quot;:
+			state = &quot;fight&quot;
+			bar_t = 0.0
+		&quot;ACT&quot;:
+			options = []
+			for a in bosses[boss_id][&quot;acts&quot;]:
+				options.append(a[0])
+			options.append(&quot;&lt; Back&quot;)
+			state = &quot;act&quot;
+		&quot;ITEM&quot;:
+			if items.is_empty():
+				say([&quot;* Your bag is empty!&quot;], &quot;menu&quot;)
+				return
+			options = []
+			for it in items:
+				options.append(it[0] + &quot;  (+&quot; + str(it[1]) + &quot; HP)&quot;)
+			options.append(&quot;&lt; Back&quot;)
+			state = &quot;item&quot;
+		&quot;SPARE&quot;:
+			if calm &gt;= 100:
+				result = &quot;friend&quot;
+				end_text = bosses[boss_id][&quot;friend&quot;]
+				say([&quot;* You offer your hand.&quot;, npcs[boss_id][&quot;name&quot;] + &quot;: ...okay. Friends.&quot;], &quot;end&quot;)
+			else:
+				say([&quot;* You try to make peace.&quot;, npcs[boss_id][&quot;name&quot;] + &quot;: NOT YET!&quot;], &quot;dodge&quot;)
+
+
+func do_act(i: int):
+	var acts = bosses[boss_id][&quot;acts&quot;]
+	if i &gt;= acts.size():
+		state = &quot;menu&quot;
+		return
+	calm = min(calm + acts[i][1], 100)
+	if i == 2 and boss_id == &quot;bolt&quot;:
+		easy = 1
+	say(acts[i][2], &quot;dodge&quot;)
+
+
+func use_item(i: int):
+	if i &gt;= items.size():
+		state = &quot;menu&quot;
+		return
+	var it = items[i]
+	items.remove_at(i)
+	hp = min(hp + it[1], max_hp)
+	say([&quot;* You ate the &quot; + it[0] + &quot;. +&quot; + str(it[1]) + &quot; HP!&quot;], &quot;dodge&quot;)
+
+
+func strike():
+	var dmg = int(round(14.0 * (1.0 - abs(bar_t - 0.5) * 2.0))) + 2
+	if bar_t &gt;= 1.0:
+		dmg = 0
+	boss_hp = max(boss_hp - dmg, 0)
+	shake = 0.5
+	if boss_hp &lt;= 0:
+		result = &quot;won&quot;
+		end_text = bosses[boss_id][&quot;win&quot;]
+		say([&quot;* You hit for &quot; + str(dmg) + &quot;!&quot;], &quot;end&quot;)
+	else:
+		say([&quot;* You missed!&quot; if dmg == 0 else &quot;* You hit for &quot; + str(dmg) + &quot; damage!&quot;], &quot;dodge&quot;)
+
+
+func start_dodge():
+	state = &quot;dodge&quot;
+	dodge_time = 0.0
+	spawn_timer = 0.6
+	bullets.clear()
+	star = box.get_center()
+	var list = bosses[boss_id][&quot;attacks&quot;]
+	attack = list[turn % list.size()]
+	turn += 1
+
+
+func battle_process(delta):
+	var s = get_viewport_rect().size
+	box = Rect2(Vector2(s.x / 2.0 - min(s.x * 0.86, 560.0) / 2.0, s.y * 0.36), Vector2(min(s.x * 0.86, 560.0), min(s.y * 0.3, 240.0)))
+	shake = max(shake - delta, 0.0)
+	hurt = max(hurt - delta, 0.0)
+	if state == &quot;fight&quot;:
+		bar_t += delta / 1.3
+		if bar_t &gt;= 1.0:
+			bar_t = 1.0
+			strike()
+	if state != &quot;dodge&quot;:
+		return
+	star += Input.get_vector(&quot;ui_left&quot;, &quot;ui_right&quot;, &quot;ui_up&quot;, &quot;ui_down&quot;) * 220.0 * delta
+	star.x = clamp(star.x, box.position.x + 10.0, box.end.x - 10.0)
+	star.y = clamp(star.y, box.position.y + 10.0, box.end.y - 10.0)
+	dodge_time += delta
+	if dodge_time &lt; 6.3:
+		spawn_timer -= delta
+		if spawn_timer &lt;= 0.0:
+			spawn_attack()
+	var keep: Array = []
+	for b in bullets:
+		b[&quot;pos&quot;] += b[&quot;vel&quot;] * delta
+		if b.has(&quot;warn&quot;):
+			b[&quot;warn&quot;] -= delta
+			b[&quot;life&quot;] -= delta
+			if b[&quot;life&quot;] &lt;= 0.0:
+				continue
+		if box.grow(250.0).has_point(b[&quot;pos&quot;]):
+			keep.append(b)
+	bullets = keep
+	if hurt == 0.0:
+		for b in bullets:
+			if hits_star(b):
+				hp -= 3
+				hurt = 0.9
+				if hp &lt;= 0:
+					hp = 0
+					result = &quot;lose&quot;
+					end_text = &quot;Your light fades... but stars always come back.&quot;
+					bullets.clear()
+					state = &quot;end&quot;
+					return
+				break
+	if dodge_time &gt; 7.0:
+		bullets.clear()
+		easy = max(easy - 1, 0)
+		var line = &quot;* &quot; + npcs[boss_id][&quot;name&quot;] + &quot; is getting ready...&quot;
+		if calm &gt;= 100:
+			line = &quot;* &quot; + npcs[boss_id][&quot;name&quot;] + &quot; doesn&#x27;t want to fight anymore. (Try SPARE!)&quot;
+		say([line], &quot;menu&quot;)
+
+
+func spawn_attack():
+	var slow = 1.6 if easy &gt; 0 else 1.0
+	var bx = box
+	match attack:
+		&quot;rain&quot;:
+			add_bullet(&quot;circle&quot;, Vector2(randf_range(bx.position.x - 40, bx.end.x - 10), bx.position.y - 10), Vector2(45, 250) / slow, 5)
+			spawn_timer = 0.11 * slow
+		&quot;lightning&quot;:
+			var b = add_bullet(&quot;beam&quot;, Vector2(randf_range(bx.position.x + 20, bx.end.x - 20), bx.get_center().y), Vector2.ZERO, 0)
+			b[&quot;size&quot;] = Vector2(30, bx.size.y)
+			b[&quot;warn&quot;] = 0.75
+			b[&quot;life&quot;] = 1.15
+			spawn_timer = 0.8 * slow
+		&quot;wind&quot;:
+			var gap_y = randf_range(bx.position.y + 45, bx.end.y - 45)
+			var x0 = bx.position.x - 20 if side &gt; 0 else bx.end.x + 20
+			var top_h = gap_y - 40 - bx.position.y
+			var bot_h = bx.end.y - gap_y - 40
+			var a = add_bullet(&quot;rect&quot;, Vector2(x0, bx.position.y + top_h / 2.0), Vector2(200 * side, 0) / slow, 0)
+			a[&quot;size&quot;] = Vector2(14, top_h)
+			var c = add_bullet(&quot;rect&quot;, Vector2(x0, bx.end.y - bot_h / 2.0), Vector2(200 * side, 0) / slow, 0)
+			c[&quot;size&quot;] = Vector2(14, bot_h)
+			side = -side
+			spawn_timer = 1.1 * slow
+		&quot;rocks&quot;:
+			add_bullet(&quot;circle&quot;, Vector2(randf_range(bx.position.x + 15, bx.end.x - 15), bx.position.y - 20), Vector2(0, randf_range(140, 200)), 14)
+			spawn_timer = 0.35
+		&quot;boulders&quot;:
+			var y = randf_range(bx.position.y + 20, bx.end.y - 20)
+			var x1 = bx.position.x - 20 if side &gt; 0 else bx.end.x + 20
+			add_bullet(&quot;circle&quot;, Vector2(x1, y), Vector2(190 * side, 0), 18)
+			side = -side
+			spawn_timer = 0.75
+		&quot;pebbles&quot;:
+			for _i in range(3):
+				var p = Vector2(randf_range(bx.position.x, bx.end.x), bx.position.y - 30)
+				if randf() &lt; 0.5:
+					p = Vector2(bx.position.x - 30 if randf() &lt; 0.5 else bx.end.x + 30, randf_range(bx.position.y, bx.end.y))
+				add_bullet(&quot;circle&quot;, p, (star - p).normalized() * 230.0, 6)
+			spawn_timer = 0.7
+
+
+func add_bullet(type: String, pos: Vector2, vel: Vector2, radius: float) -&gt; Dictionary:
+	var b = {&quot;type&quot;: type, &quot;pos&quot;: pos, &quot;vel&quot;: vel, &quot;size&quot;: Vector2(radius, radius)}
+	bullets.append(b)
+	return b
+
+
+func hits_star(b) -&gt; bool:
+	if b.get(&quot;warn&quot;, 0.0) &gt; 0.0:
+		return false
+	if b[&quot;type&quot;] == &quot;circle&quot;:
+		return star.distance_to(b[&quot;pos&quot;]) &lt; b[&quot;size&quot;].x + 6.0
+	return Rect2(b[&quot;pos&quot;] - b[&quot;size&quot;] / 2.0, b[&quot;size&quot;]).grow(5.0).has_point(star)
+
+
+# ================= BUTTON SPOTS =================
+
+func talk_button() -&gt; Rect2:
+	var s = get_viewport_rect().size
+	return Rect2(s - Vector2(150, 150), Vector2(110, 110))
+
+
+func dialog_rect() -&gt; Rect2:
+	var s = get_viewport_rect().size
+	var w = min(s.x - 40.0, 760.0)
+	return Rect2(Vector2(s.x / 2.0 - w / 2.0, s.y - 190.0), Vector2(w, 150))
+
+
+func yes_rect() -&gt; Rect2:
+	var d = dialog_rect()
+	return Rect2(d.position + Vector2(d.size.x / 2.0 - 190, 80), Vector2(160, 50))
+
+
+func no_rect() -&gt; Rect2:
+	var d = dialog_rect()
+	return Rect2(d.position + Vector2(d.size.x / 2.0 + 30, 80), Vector2(160, 50))
+
+
+func button_rect(i: int) -&gt; Rect2:
+	var s = get_viewport_rect().size
+	var bw = min(140.0, (box.size.x - 30.0) / 4.0)
+	var x = s.x / 2.0 - (bw * 4.0 + 30.0) / 2.0 + i * (bw + 10.0)
+	return Rect2(Vector2(x, box.end.y + 64.0), Vector2(bw, 56))
+
+
+func row_at(p: Vector2) -&gt; int:
+	if not box.has_point(p):
+		return -1
+	return int((p.y - box.position.y - 14.0) / 40.0)
+
+
+# ================= DRAWING =================
+
+func _draw():
+	if in_battle:
+		draw_battle()
+	else:
+		draw_world()
+
+
+func draw_world():
+	var s = get_viewport_rect().size
+	var t = Time.get_ticks_msec() / 1000.0
+	draw_set_transform(-cam, 0.0, Vector2.ONE)
+	var x0 = max(int(cam.x / TILE) - 1, 0)
+	var y0 = max(int(cam.y / TILE) - 1, 0)
+	var x1 = min(int((cam.x + s.x) / TILE) + 2, W)
+	var y1 = min(int((cam.y + s.y) / TILE) + 2, H)
+	for y in range(y0, y1):
+		for x in range(x0, x1):
+			var r = Rect2(x * TILE, y * TILE, TILE, TILE)
+			var c = r.get_center()
+			var green = Color(0.33, 0.62, 0.3) if (x + y) % 2 == 0 else Color(0.31, 0.59, 0.28)
+			match grid[y][x]:
+				0, 1, 4, 5:
+					draw_rect(r, green)
+				2:
+					draw_rect(r, Color(0.2, 0.45, 0.85))
+					draw_line(c + Vector2(-12, sin(t * 2 + x) * 3), c + Vector2(12, sin(t * 2 + x) * 3), Color(0.6, 0.8, 1.0), 2.0)
+				3:
+					draw_rect(r, Color(0.82, 0.72, 0.5))
+			if grid[y][x] == 4:
+				draw_circle(c + Vector2(-8, 4), 4.0, Color(1, 0.85, 0.2) if (x * y) % 2 == 0 else Color(1, 0.5, 0.7))
+				draw_circle(c + Vector2(9, -6), 3.0, Color.WHITE)
+			elif grid[y][x] == 1:
+				draw_rect(Rect2(c + Vector2(-5, 4), Vector2(10, 18)), Color(0.45, 0.3, 0.15))
+				draw_circle(c + Vector2(0, -4), 20.0, Color(0.12, 0.4, 0.15))
+				draw_circle(c + Vector2(-6, -10), 9.0, Color(0.2, 0.5, 0.2))
+	for hs in houses:
+		var r = Rect2(hs.position * TILE, hs.size * TILE)
+		draw_rect(Rect2(r.position + Vector2(8, 30), r.size - Vector2(16, 30)), Color(0.92, 0.85, 0.7))
+		draw_colored_polygon(PackedVector2Array([r.position + Vector2(-4, 40), r.position + Vector2(r.size.x / 2.0, -10), r.position + Vector2(r.size.x + 4, 40)]), Color(0.65, 0.25, 0.2))
+		draw_rect(Rect2(r.position + Vector2(r.size.x / 2.0 - 14, r.size.y - 44), Vector2(28, 44)), Color(0.45, 0.28, 0.15))
+		draw_rect(Rect2(r.position + Vector2(24, 64), Vector2(30, 26)), Color(0.6, 0.85, 1.0))
+	for id in npcs:
+		draw_npc(npcs[id][&quot;kind&quot;], npc_pos(id) + Vector2(0, sin(t * 2.0 + npc_pos(id).x) * 2.0), npcs[id][&quot;status&quot;])
+		if player.distance_to(npc_pos(id)) &lt; 70.0 and state == &quot;walk&quot;:
+			draw_string(font, npc_pos(id) + Vector2(-60, -48), npcs[id][&quot;name&quot;], HORIZONTAL_ALIGNMENT_CENTER, 120, 18, Color.WHITE)
+	draw_star(player + Vector2(0, sin(t * 6.0) * 2.0), 20.0, Color(1, 0.9, 0.2))
+	draw_circle(player + Vector2(-6, -2), 3.0, Color.BLACK)
+	draw_circle(player + Vector2(6, -2), 3.0, Color.BLACK)
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+	# controls
+	var tb = talk_button()
+	var near = nearest_npc() != &quot;&quot; and state == &quot;walk&quot;
+	draw_circle(tb.get_center(), 55.0, Color(1, 0.8, 0.2, 0.9 if near else 0.35))
+	draw_string(font, tb.position + Vector2(0, 62), &quot;TALK&quot;, HORIZONTAL_ALIGNMENT_CENTER, tb.size.x, 24, Color.BLACK)
+	if joy_index &gt;= 0:
+		draw_circle(joy_origin, 60.0, Color(1, 1, 1, 0.15))
+		draw_circle(joy_origin + joy_vec * 60.0, 26.0, Color(1, 1, 1, 0.5))
+	draw_string(font, Vector2(16, 30), &quot;HP &quot; + str(hp) + &quot;/&quot; + str(max_hp) + &quot;    Bag: &quot; + str(items.size()) + &quot; items&quot;, HORIZONTAL_ALIGNMENT_LEFT, -1, 18, Color.WHITE)
+
+	if state in [&quot;talk&quot;, &quot;choice&quot;]:
+		var d = dialog_rect()
+		draw_rect(d, Color.BLACK)
+		draw_rect(d, Color.WHITE, false, 4.0)
+		if state == &quot;talk&quot;:
+			var text = lines[line_index].substr(0, int(chars))
+			draw_multiline_string(font, d.position + Vector2(22, 40), text, HORIZONTAL_ALIGNMENT_LEFT, d.size.x - 44.0, 24, -1, Color.WHITE)
+		else:
+			draw_string(font, d.position + Vector2(22, 40), &quot;Fight &quot; + npcs[choice_npc][&quot;name&quot;] + &quot;?&quot;, HORIZONTAL_ALIGNMENT_LEFT, -1, 24, Color.WHITE)
+			for pair in [[yes_rect(), &quot;YES&quot;], [no_rect(), &quot;NO&quot;]]:
+				draw_rect(pair[0], Color(1, 0.6, 0.1), false, 3.0)
+				draw_string(font, pair[0].position + Vector2(0, 34), pair[1], HORIZONTAL_ALIGNMENT_CENTER, pair[0].size.x, 24, Color(1, 0.6, 0.1))
+
+
+func draw_battle():
+	var s = get_viewport_rect().size
+	var t = Time.get_ticks_msec() / 1000.0
+	var c = Vector2(s.x / 2.0, s.y * 0.17 + sin(t * 1.5) * 6.0)
+	if shake &gt; 0.0:
+		c += Vector2(randf_range(-6, 6), randf_range(-3, 3))
+	draw_npc(npcs[boss_id][&quot;kind&quot;], c, &quot;friend&quot; if calm &gt;= 100 else &quot;&quot;, 2.2)
+	draw_string(font, Vector2(0, c.y - 80), npcs[boss_id][&quot;name&quot;], HORIZONTAL_ALIGNMENT_CENTER, s.x, 22, Color.WHITE)
+	var top = Vector2(s.x / 2.0 - 110.0, s.y * 0.17 + 108.0)
+	draw_rect(Rect2(top, Vector2(220, 10)), Color(0.4, 0.05, 0.05))
+	draw_rect(Rect2(top, Vector2(220.0 * boss_hp / boss_max, 10)), Color(0.3, 1.0, 0.3))
+	draw_rect(Rect2(top + Vector2(0, 16), Vector2(220, 8)), Color(0.15, 0.15, 0.3))
+	draw_rect(Rect2(top + Vector2(0, 16), Vector2(220.0 * calm / 100.0, 8)), Color(0.5, 0.8, 1.0))
+	draw_string(font, top + Vector2(228, 25), &quot;calm&quot;, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color(0.5, 0.8, 1.0))
+	draw_rect(box, Color.WHITE, false, 4.0)
+	match state:
+		&quot;talk&quot;:
+			draw_multiline_string(font, box.position + Vector2(24, 42), lines[line_index].substr(0, int(chars)), HORIZONTAL_ALIGNMENT_LEFT, box.size.x - 48.0, 24, -1, Color.WHITE)
+		&quot;act&quot;, &quot;item&quot;:
+			for i in options.size():
+				var y = box.position.y + 14.0 + i * 40.0
+				draw_star(Vector2(box.position.x + 20, y + 20), 7.0, Color(1, 0.9, 0.3))
+				draw_string(font, Vector2(box.position.x + 40, y + 28), options[i], HORIZONTAL_ALIGNMENT_LEFT, -1, 24, Color.WHITE)
+		&quot;fight&quot;:
+			var bar = Rect2(box.position + Vector2(20, box.size.y / 2.0 - 30), Vector2(box.size.x - 40, 60))
+			draw_rect(bar, Color(0.15, 0.15, 0.2))
+			draw_rect(Rect2(Vector2(bar.get_center().x - 40, bar.position.y), Vector2(80, 60)), Color(0.2, 0.5, 0.2))
+			draw_rect(Rect2(Vector2(bar.get_center().x - 10, bar.position.y), Vector2(20, 60)), Color(0.4, 1.0, 0.4))
+			draw_rect(Rect2(Vector2(bar.position.x + bar.size.x * bar_t - 4, bar.position.y - 8), Vector2(8, 76)), Color.WHITE)
+			draw_string(font, Vector2(0, box.end.y - 18), &quot;TAP when the line is in the middle!&quot;, HORIZONTAL_ALIGNMENT_CENTER, s.x, 18, Color(1, 1, 0.5))
+		&quot;dodge&quot;:
+			for b in bullets:
+				var r = Rect2(b[&quot;pos&quot;] - b[&quot;size&quot;] / 2.0, b[&quot;size&quot;])
+				if b[&quot;type&quot;] == &quot;circle&quot;:
+					draw_circle(b[&quot;pos&quot;], b[&quot;size&quot;].x, Color(0.6, 0.8, 1.0) if boss_id == &quot;bolt&quot; else Color(0.65, 0.6, 0.55))
+				elif b[&quot;type&quot;] == &quot;beam&quot;:
+					if b[&quot;warn&quot;] &gt; 0.0:
+						draw_rect(r, Color(1, 1, 0.3, 0.25))
+						draw_rect(r, Color(1, 1, 0.3), false, 2.0)
+					else:
+						draw_rect(r, Color(1, 1, 0.75))
+				else:
+					draw_rect(r, Color(0.85, 0.95, 1.0))
+			if hurt == 0.0 or int(hurt * 12.0) % 2 == 0:
+				draw_star(star, 11.0, Color(1, 0.9, 0.2))
+		&quot;end&quot;:
+			var title = {&quot;won&quot;: &quot;VICTORY&quot;, &quot;friend&quot;: &quot;FRIENDSHIP!&quot;, &quot;lose&quot;: &quot;GAME OVER&quot;}[result]
+			draw_string(font, box.position + Vector2(0, 60), title, HORIZONTAL_ALIGNMENT_CENTER, box.size.x, 40, Color(1, 0.9, 0.3))
+			draw_multiline_string(font, box.position + Vector2(24, 110), end_text, HORIZONTAL_ALIGNMENT_CENTER, box.size.x - 48.0, 20, -1, Color.WHITE)
+			draw_string(font, Vector2(0, box.end.y - 16), &quot;tap to continue&quot;, HORIZONTAL_ALIGNMENT_CENTER, s.x, 18, Color(0.7, 0.7, 0.7))
+	var hp_pos = Vector2(box.position.x, box.end.y + 30.0)
+	draw_string(font, hp_pos, &quot;NOVA   HP&quot;, HORIZONTAL_ALIGNMENT_LEFT, -1, 20, Color.WHITE)
+	draw_rect(Rect2(hp_pos + Vector2(130, -17), Vector2(160, 20)), Color(0.6, 0.05, 0.05))
+	draw_rect(Rect2(hp_pos + Vector2(130, -17), Vector2(160.0 * hp / max_hp, 20)), Color(1, 0.85, 0.2))
+	draw_string(font, hp_pos + Vector2(300, 0), str(hp) + &quot; / &quot; + str(max_hp), HORIZONTAL_ALIGNMENT_LEFT, -1, 20, Color.WHITE)
+	for i in BUTTONS.size():
+		var r = button_rect(i)
+		var col = Color(1, 0.6, 0.1) if state == &quot;menu&quot; else Color(0.4, 0.3, 0.2)
+		if BUTTONS[i] == &quot;SPARE&quot; and calm &gt;= 100 and state == &quot;menu&quot;:
+			col = Color(1, 1, 0.3)
+		draw_rect(r, col, false, 3.0)
+		draw_string(font, Vector2(r.position.x, r.position.y + 37), BUTTONS[i], HORIZONTAL_ALIGNMENT_CENTER, r.size.x, 22, col)
+
+
+# Draws a character. k = size (1 in the world, bigger in battles)
+func draw_npc(kind: String, c: Vector2, status: String, k := 1.0):
+	var happy = status == &quot;friend&quot;
+	match kind:
+		&quot;mushroom&quot;:
+			draw_rect(Rect2(c + Vector2(-9, -2) * k, Vector2(18, 20) * k), Color(0.98, 0.92, 0.8))
+			draw_circle(c + Vector2(0, -6) * k, 17.0 * k, Color(0.9, 0.2, 0.2))
+			draw_circle(c + Vector2(-7, -12) * k, 3.5 * k, Color.WHITE)
+			draw_circle(c + Vector2(7, -9) * k, 3.0 * k, Color.WHITE)
+			draw_circle(c + Vector2(-4, 6) * k, 2.0 * k, Color.BLACK)
+			draw_circle(c + Vector2(4, 6) * k, 2.0 * k, Color.BLACK)
+		&quot;turtle&quot;:
+			draw_circle(c + Vector2(16, -2) * k, 7.0 * k, Color(0.55, 0.75, 0.4))
+			draw_circle(c, 17.0 * k, Color(0.25, 0.5, 0.25))
+			draw_circle(c, 9.0 * k, Color(0.4, 0.62, 0.3))
+			draw_circle(c + Vector2(18, -4) * k, 1.8 * k, Color.BLACK)
+		&quot;cloud&quot;:
+			var grey = Color(0.75, 0.78, 0.85) if happy or status == &quot;won&quot; else Color(0.5, 0.53, 0.6)
+			if not happy and status != &quot;won&quot;:
+				draw_colored_polygon(PackedVector2Array([c + Vector2(-3, 12) * k, c + Vector2(6, 12) * k, c + Vector2(1, 22) * k,
+					c + Vector2(7, 22) * k, c + Vector2(-6, 38) * k, c + Vector2(-2, 26) * k, c + Vector2(-8, 26) * k]), Color(1, 0.9, 0.2))
+			for puff in [[Vector2(-18, 3), 13.0], [Vector2(0, -6), 18.0], [Vector2(18, 3), 13.0], [Vector2(-8, 8), 13.0], [Vector2(8, 8), 13.0]]:
+				draw_circle(c + puff[0] * k, puff[1] * k, grey)
+			draw_face(c, k, happy)
+		&quot;rock&quot;:
+			var pts = PackedVector2Array()
+			for i in range(8):
+				var a = i * TAU / 8.0
+				pts.append(c + Vector2(cos(a) * 20.0, sin(a) * 17.0 + (2.0 if i % 2 == 0 else 0.0)) * k)
+			draw_colored_polygon(pts, Color(0.55, 0.52, 0.48))
+			draw_circle(c + Vector2(-8, 8) * k, 3.0 * k, Color(0.45, 0.42, 0.4))
+			draw_face(c, k, happy)
+
+
+func draw_face(c: Vector2, k: float, happy: bool):
+	for sd in [-1.0, 1.0]:
+		var e = c + Vector2(7 * sd, -2) * k
+		draw_circle(e, 3.8 * k, Color.WHITE)
+		draw_circle(e + Vector2(0, 1) * k, 2.0 * k, Color.BLACK)
+		if not happy:
+			draw_line(e + Vector2(-4 * sd, -6) * k, e + Vector2(4 * sd, -3) * k, Color.BLACK, 1.5 * k)
+	if happy:
+		draw_arc(c + Vector2(0, 5) * k, 5.0 * k, 0.2, PI - 0.2, 8, Color.BLACK, 1.2 * k)
+	else:
+		draw_line(c + Vector2(-5, 8) * k, c + Vector2(5, 7) * k, Color.BLACK, 1.2 * k)
+
+
+func draw_star(p: Vector2, r: float, color: Color):
+	var pts = PackedVector2Array()
+	for i in range(10):
+		var radius = r if i % 2 == 0 else r * 0.45
+		var a = -PI / 2.0 + i * PI / 5.0
+		pts.append(p + Vector2(cos(a), sin(a)) * radius)
+	draw_colored_polygon(pts, color)
+</pre>
+  </section>
+  
+</main>
+<script>
+document.querySelectorAll("button.copy").forEach(function (btn) {
+  btn.addEventListener("click", function () {
+    var pre = document.getElementById(btn.dataset.target);
+    var label = btn.textContent;
+    function done(text) { btn.textContent = text; btn.classList.add("done");
+      setTimeout(function () { btn.textContent = label; btn.classList.remove("done"); }, 2500); }
+    function selectIt() { var r = document.createRange(); r.selectNodeContents(pre);
+      var s = window.getSelection(); s.removeAllRanges(); s.addRange(r); done("Selected: press Ctrl+C"); }
+    try { navigator.clipboard.writeText(pre.textContent).then(function () { done("Copied!"); }, selectIt); }
+    catch (e) { selectIt(); }
+  });
+});
+</script>
