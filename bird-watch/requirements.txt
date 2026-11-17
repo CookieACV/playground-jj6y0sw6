@@ -1,0 +1,2 @@
+anthropic>=2.9
+opencv-python>=4.8
