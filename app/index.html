@@ -30,6 +30,7 @@
   --shadow: rgba(11, 27, 51, .08);
   --px-line: #0b2a55; --px-body: #2f8cff; --px-shine: #a9d6ff; --px-eye: #06172e; --px-glint: #ffffff;
   --px-lid: #c3d0e0; --px-lid-edge: #556a87; --px-logo: #2f8cff; --px-base: #7f91aa;
+  --px-screen: #8fd3ff; --px-screen-2: #d2f0ff; --px-floor: #bccde3; --checker: #e6edf6;
   --wave: #2f8cff; --wave-foam: #bfe3ff; --wave-deep: #1766d6;
   --syn-kw: #1766d6; --syn-str: #0f7b6c; --syn-num: #a14a0b; --syn-com: #7b8ba3; --syn-fn: #7a3cc7; --syn-tag: #b4304c; --syn-attr: #0e7490;
   --font-pixel: "Pixelify Sans", "Courier New", monospace;
@@ -43,6 +44,7 @@
     --code-bg: #050d19; --frame-bg: #ffffff; --danger: #f2867e; --warn: #f5b73b; --shadow: rgba(0, 0, 0, .35);
     --px-line: #04122a; --px-body: #3d9bff; --px-shine: #b5e0ff; --px-eye: #04122a; --px-glint: #ffffff;
     --px-lid: #2b3f5c; --px-lid-edge: #8ba3c4; --px-logo: #5fd0ff; --px-base: #4a6080;
+    --px-screen: #5fd0ff; --px-screen-2: #b0ecff; --px-floor: #1c2f4b; --checker: #12213a;
     --wave: #1f6fd6; --wave-foam: #6cc4ff; --wave-deep: #0d3f8a;
     --syn-kw: #6fb4ff; --syn-str: #5fd3b5; --syn-num: #f2b05e; --syn-com: #5e7391; --syn-fn: #c39bff; --syn-tag: #ff8fa3; --syn-attr: #5fd0e6;
     color-scheme: dark;
@@ -54,6 +56,7 @@
   --code-bg: #050d19; --frame-bg: #ffffff; --danger: #f2867e; --warn: #f5b73b; --shadow: rgba(0, 0, 0, .35);
   --px-line: #04122a; --px-body: #3d9bff; --px-shine: #b5e0ff; --px-eye: #04122a; --px-glint: #ffffff;
   --px-lid: #2b3f5c; --px-lid-edge: #8ba3c4; --px-logo: #5fd0ff; --px-base: #4a6080;
+  --px-screen: #5fd0ff; --px-screen-2: #b0ecff; --px-floor: #1c2f4b; --checker: #12213a;
   --wave: #1f6fd6; --wave-foam: #6cc4ff; --wave-deep: #0d3f8a;
   --syn-kw: #6fb4ff; --syn-str: #5fd3b5; --syn-num: #f2b05e; --syn-com: #5e7391; --syn-fn: #c39bff; --syn-tag: #ff8fa3; --syn-attr: #5fd0e6;
   color-scheme: dark;
@@ -70,14 +73,25 @@ a { color: inherit; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
 /* pixel mascot */
-.mascot { display: block; image-rendering: pixelated; flex: none; overflow: visible; }
-.mascot .pD { fill: var(--px-line); } .mascot .pB { fill: var(--px-body); } .mascot .pL { fill: var(--px-shine); }
+.mascot { display: block; image-rendering: pixelated; flex: none; overflow: hidden; }
+.mascot .pD, .mascot .pr { fill: var(--px-line); } .mascot .pB, .mascot .pR { fill: var(--px-body); } .mascot .pL { fill: var(--px-shine); }
 .mascot .pE, .mascot .pM { fill: var(--px-eye); } .mascot .pW { fill: var(--px-glint); }
-.mascot .pG { fill: var(--px-lid-edge); } .mascot .pS { fill: var(--px-lid); } .mascot .pO { fill: var(--px-logo); } .mascot .pK { fill: var(--px-base); }
+.mascot .pG { fill: var(--px-lid-edge); } .mascot .pS { fill: var(--px-lid); } .mascot .pK { fill: var(--px-base); }
+.mascot .pP { fill: var(--px-screen); } .mascot .pQ { fill: var(--px-floor); }
 .mascot .eyes { transform-box: fill-box; transform-origin: center; animation: blink 5.2s infinite; }
 @keyframes blink { 0%, 93%, 100% { transform: scaleY(1); } 95% { transform: scaleY(.15); } }
-.msg.busy .who .mascot { animation: bob .5s steps(2, jump-none) infinite alternate; }
-@keyframes bob { from { transform: translateY(0); } to { transform: translateY(-2px); } }
+.mascot .drop { animation: breathe 2.6s steps(1) infinite; }
+@keyframes breathe { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-1px); } }
+.mascot .arm { animation: type .34s steps(1) infinite; }
+@keyframes type { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-1px); } }
+.mascot .screen rect { animation: flicker 2.3s steps(1) infinite; }
+@keyframes flicker { 0%, 100% { fill: var(--px-screen); } 38% { fill: var(--px-screen-2); } 44% { fill: var(--px-screen); } 71% { fill: var(--px-screen-2); } 76% { fill: var(--px-screen); } }
+.mascot .bit { fill: var(--px-screen); opacity: 0; animation: rise 2.4s steps(8) infinite; }
+.mascot .b2 { animation-delay: .8s; } .mascot .b3 { animation-delay: 1.6s; }
+@keyframes rise { 0% { transform: translate(0, 0); opacity: 0; } 12% { opacity: 1; } 100% { transform: translate(-2px, -8px); opacity: 0; } }
+/* small copies only blink, until ACE is working */
+.mascot.head .drop, .mascot.head .arm { animation: none; }
+.msg.busy .mascot.head .drop { animation: breathe .5s steps(1) infinite; }
 
 /* syntax colours (highlight.js classes) */
 .hljs-keyword, .hljs-selector-tag, .hljs-built_in, .hljs-literal, .hljs-type, .hljs-meta .hljs-keyword { color: var(--syn-kw); }
@@ -101,7 +115,7 @@ a { color: inherit; }
 .home-link:hover { color: var(--fg); background: var(--rail); }
 .home-main { flex: 1; display: flex; align-items: center; padding-block: 24px 48px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
 .home-grid { width: 100%; max-width: 1000px; margin: 0 auto; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: clamp(28px, 6vw, 72px); align-items: center; }
-.home-mascot .mascot { width: clamp(150px, 24vw, 252px); height: auto; }
+.home-mascot .mascot { width: clamp(240px, 33vw, 380px); height: auto; }
 .home-side { display: flex; flex-direction: column; gap: 22px; min-width: 0; }
 .wordmark { font-family: var(--font-pixel); font-weight: 700; font-size: clamp(72px, 13vw, 148px); line-height: .82; letter-spacing: 0.03em; margin: 0; color: var(--fg); }
 .ask { display: flex; align-items: center; gap: 10px; background: var(--panel); border: 2px solid var(--line-strong); border-radius: 8px; padding: 6px 6px 6px 14px; max-width: 600px; }
@@ -121,7 +135,7 @@ a { color: inherit; }
 .deep { background: var(--wave-deep); height: calc(28px + env(safe-area-inset-bottom, 0px)); }
 @media (max-width: 720px) {
   .home-grid { grid-template-columns: minmax(0, 1fr); gap: 20px; }
-  .home-mascot .mascot { width: 128px; }
+  .home-mascot .mascot { width: min(260px, 70vw); }
   .home-main { align-items: flex-start; padding-top: 8px; }
 }
 @media (max-width: 420px) { .ask-go span.k { display: none; } }
@@ -201,7 +215,7 @@ a { color: inherit; }
 .note { font-size: 13px; color: var(--danger); }
 
 .welcome { padding-top: 2vh; display: flex; flex-direction: column; gap: 14px; }
-.welcome .mascot { width: 84px; height: auto; }
+.welcome .mascot { width: 136px; height: auto; }
 .welcome h1 { font-family: var(--font-pixel); font-weight: 700; font-size: 28px; line-height: 1.1; letter-spacing: 0.01em; margin: 0; }
 .starters { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; }
 .starters button { text-align: left; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 9px 12px; display: flex; flex-direction: column; gap: 1px; }
@@ -257,7 +271,7 @@ a { color: inherit; }
 .editor textarea[readonly] { cursor: default; }
 .empty-state { flex: 1; display: grid; place-items: center; text-align: center; padding: 24px; color: var(--muted); background: var(--panel); }
 .empty-state .inner { max-width: 320px; display: flex; flex-direction: column; gap: 12px; align-items: center; }
-.empty-state .mascot { width: 72px; height: auto; opacity: .9; }
+.empty-state .mascot { width: 112px; height: auto; }
 .empty-state p { margin: 0; }
 .frame-wrap { flex: 1; min-height: 0; position: relative; background: var(--frame-bg); }
 .frame-wrap iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: var(--frame-bg); }
@@ -273,6 +287,19 @@ a { color: inherit; }
 .cline.error { color: var(--danger); }
 .cline.warn { color: var(--warn); }
 .cempty { color: var(--muted); padding: 4px 0; font-family: var(--font-body); }
+.sprites-pane { flex: 1; min-height: 0; overflow-y: auto; background: var(--code-bg); }
+.sprite-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(164px, 1fr)); gap: 12px; padding: 14px; padding-right: max(14px, env(safe-area-inset-right, 0px)); }
+.sprite-card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; min-width: 0; }
+.sprite-stage { height: 140px; display: grid; place-items: center; background-color: var(--panel); border-bottom: 1px solid var(--line);
+  background-image: conic-gradient(var(--checker) 25%, transparent 0 50%, var(--checker) 0 75%, transparent 0); background-size: 12px 12px; }
+.sprite-stage canvas { image-rendering: pixelated; max-width: calc(100% - 16px); max-height: 124px; }
+.sprite-meta { padding: 8px 10px 2px; display: flex; flex-direction: column; min-width: 0; }
+.sprite-meta b { font-family: var(--font-mono); font-size: 13px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sprite-meta small { color: var(--muted); font-family: var(--font-mono); font-size: 11.5px; }
+.sprite-acts { display: flex; gap: 4px; padding: 6px 8px 8px; }
+.sprite-acts button { background: none; border: 1px solid var(--line); border-radius: 5px; padding: 3px 8px; font-size: 12px; color: var(--muted); }
+.sprite-acts button:hover { color: var(--fg); border-color: var(--accent); }
+.sprite-src { grid-column: 1 / -1; margin: 0; font-size: 12px; color: var(--muted); font-family: var(--font-mono); }
 
 .sheet-backdrop { position: fixed; inset: 0; background: rgba(4, 12, 26, .55); z-index: 30; }
 .sheet { position: fixed; z-index: 31; top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(520px, calc(100% - 32px)); max-height: calc(100% - 48px); overflow-y: auto;
@@ -297,7 +324,7 @@ a { color: inherit; }
   .studio { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
   .mbar { display: flex; align-items: center; gap: 10px; padding-block: 8px; padding-left: max(12px, env(safe-area-inset-left, 0px)); padding-right: max(12px, env(safe-area-inset-right, 0px)); border-bottom: 1px solid var(--line); }
   .mbar .seg { flex: 1; }
-  .mbar .seg button { flex: 1; }
+  .mbar .seg button { flex: 1; padding: 5px 4px; }
   .chat-top { display: none; }
   .chat-col { border-right: 0; }
   .studio[data-pane="chat"] .work { display: none; }
@@ -320,7 +347,7 @@ a { color: inherit; }
   </header>
   <main class="home-main">
     <div class="home-grid">
-      <div class="home-mascot" data-mascot="252"></div>
+      <div class="home-mascot" data-mascot="380"></div>
       <div class="home-side">
         <h1 class="wordmark">ACE</h1>
         <form class="ask" id="heroAsk">
@@ -349,11 +376,12 @@ a { color: inherit; }
       <button type="button" data-pane-btn="chat" aria-pressed="true">Chat</button>
       <button type="button" data-pane-btn="code" aria-pressed="false">Code <span class="count" id="mCount" hidden></span></button>
       <button type="button" data-pane-btn="preview" aria-pressed="false">Preview</button>
+      <button type="button" data-pane-btn="sprites" aria-pressed="false" hidden>Sprites</button>
     </div>
   </div>
 
   <aside class="rail" id="rail" aria-label="Projects">
-    <a class="logo" href="#home" aria-label="ACE home"><span data-mascot="34"></span><span id="brandName">ACE</span></a>
+    <a class="logo" href="#home" aria-label="ACE home"><span data-mascot="24" data-head></span><span id="brandName">ACE</span></a>
     <button class="new-chat" id="newChat" type="button">
       <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
       New project
@@ -410,6 +438,7 @@ a { color: inherit; }
       <div class="seg work-tabs" role="group" aria-label="Workspace view">
         <button type="button" data-work="code" aria-pressed="true">Code</button>
         <button type="button" data-work="preview" aria-pressed="false">Preview</button>
+        <button type="button" data-work="sprites" aria-pressed="false" hidden>Sprites <span class="count" id="sCount"></span></button>
       </div>
       <span class="work-msg" id="workMsg" role="status"></span>
       <div class="work-actions">
@@ -429,7 +458,7 @@ a { color: inherit; }
       </div>
       <div class="empty-state" id="codeEmpty">
         <div class="inner">
-          <span data-mascot="72"></span>
+          <span data-mascot="112"></span>
           <p>No files yet.</p>
           <button type="button" class="btn" id="emptyNewFile">New file</button>
         </div>
@@ -440,7 +469,7 @@ a { color: inherit; }
         <iframe id="frame" sandbox="allow-scripts allow-forms" title="App preview" hidden></iframe>
         <div class="empty-state" id="previewEmpty">
           <div class="inner">
-            <span data-mascot="72"></span>
+            <span data-mascot="112"></span>
             <p>Nothing to run yet.</p>
           </div>
         </div>
@@ -454,6 +483,9 @@ a { color: inherit; }
         </div>
         <div class="console-body" id="consoleBody" hidden></div>
       </div>
+    </div>
+    <div class="sprites-pane" id="spritesPane" hidden>
+      <div class="sprite-grid" id="spriteGrid"></div>
     </div>
   </section>
 </div>
@@ -482,9 +514,9 @@ a { color: inherit; }
   const DEFAULT_PERSONA = "You are ACE, an AI. You're an expert programmer: you build complete, working projects, explain code clearly at any skill level, and answer general questions too. Keep a relaxed, friendly tone. Give the direct answer first and say so when you're unsure. If someone asks what you run on, you run on Claude, made by Anthropic.";
   const STARTERS = [
     ["My own code platform", "Build my own mini code platform: a browser code playground with HTML, CSS and JavaScript editor tabs, a Run button, a live preview pane, a console that shows logs and errors, and a few starter templates to pick from. Make it look professional.", true],
-    ["Snake game", "Make a Snake game with a score, a saved high score, increasing speed, and on-screen arrow buttons for phones."],
+    ["Pixel platformer", "Make a pixel-art platformer with your own animated sprites: a hero with idle, run and jump frames, coins, two kinds of enemies, a goal flag, three levels, chiptune sound effects and touch controls for phones.", true],
+    ["Snake game", "Make a Snake game with your own pixel-art sprites for the snake and food, a score, a saved high score, increasing speed, sound effects, and on-screen arrow buttons for phones."],
     ["To-do app", "Build a to-do app with categories, due dates, filters, and a dark mode toggle."],
-    ["Landing page", "Create a modern landing page for a coffee shop called Bean There, with a menu, opening hours and a contact section."],
     ["Python script", "Write a Python script that renames every photo in a folder to the date it was taken, then explain how to run it."],
     ["Explain code", "Explain this JavaScript line by line, like I'm new to coding:\n\nconst unique = [...new Set(numbers)].sort((a, b) => a - b);"],
   ];
@@ -494,27 +526,29 @@ a { color: inherit; }
 
   // ---------- pixel art: ACE (a water drop) at his laptop, and the tide ----------
   const MASCOT = [
-    "..........D..........",
-    ".........DBD.........",
-    "........DLBBD........",
-    ".......DBLBBBD.......",
-    "......DBLBBBBBD......",
-    ".....DBLBBBBBBBD.....",
-    "....DBLBBBBBBBBBD....",
-    "....DBBBBBBBBBBBD....",
-    "...DBBWEBBBBBWEBBD...",
-    "...DBBEEBBBBBEEBBD...",
-    "...DBBBBBBBBBBBBBD...",
-    "...DBBBBMBBBMBBBBD...",
-    "..DBBBBBBMMMBBBBBBD..",
-    ".GGGBBGGGGGGGGGBBGGG.",
-    ".GSSSSSSSSSSSSSSSSSG.",
-    ".GSSSSSSSSOSSSSSSSSG.",
-    ".GSSSSSSSOOOSSSSSSSG.",
-    ".GSSSSSSSSSSSSSSSSSG.",
-    ".GSSSSSSSSSSSSSSSSSG.",
-    ".GGGGGGGGGGGGGGGGGGG.",
-    "KKKKKKKKKKKKKKKKKKKKK",
+    "................................",
+    "................................",
+    "................................",
+    "....D...........................",
+    "....DD..........................",
+    ".....DBD........................",
+    ".....DBBD.......................",
+    "....DLBBBD......................",
+    "...DLBBBBBD.....................",
+    "...DLBBBWEBD................GG..",
+    "..DLBBBBEEBBD...............PG..",
+    "..DLBBBBEEBBBD..............PG..",
+    "..DLBBBBBBBBBD..............PG..",
+    ".DBBBBBBBBBBMBD............PG...",
+    ".DBBBBBBBBMMBBD............PG...",
+    ".DBBBBBBBBBBBBD............PG...",
+    ".DBBBBBBBBBBBBD...........PG....",
+    ".DBBBBBBBBBBBBDrrrr.......PG....",
+    ".DBBBBBBBBBBBBRRRRRr......PG....",
+    ".DBBBBBBBBBBBBDrrGKKKKKKKKKKG...",
+    "..DBBBBBBBBBBD...GSSSSSSSSSSG...",
+    "...DDDDDDDDDD....GGGGGGGGGGGG...",
+    "QQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQ.",
   ];
   function pixelRects(rows, map, only, prefix) {
     let out = "";
@@ -530,14 +564,23 @@ a { color: inherit; }
     });
     return out;
   }
-  const MASCOT_SVG = (() => {
-    const base = pixelRects(MASCOT, (c) => (c === "." ? null : (c === "E" || c === "W") ? "B" : c), null, "p");
-    const eyes = pixelRects(MASCOT, (c) => (c === "E" || c === "W" ? c : null), null, "p");
-    return `<svg class="mascot" viewBox="0 0 21 21" shape-rendering="crispEdges" aria-hidden="true">${base}<g class="eyes">${eyes}</g></svg>`;
+  // Layers: the laptop and floor stay still; ACE breathes, blinks and types; the screen flickers; bits float up.
+  const MASCOT_INNER = (() => {
+    const pick = (set, swap = {}) => (c) => (swap[c] || (set.includes(c) ? c : null));
+    const scene = pixelRects(MASCOT, pick("GSKQ"), null, "p");
+    const screen = pixelRects(MASCOT, pick("P"), null, "p");
+    const body = pixelRects(MASCOT, pick("DBLM", { E: "B", W: "B" }), null, "p");
+    const eyes = pixelRects(MASCOT, pick("EW"), null, "p");
+    const arm = pixelRects(MASCOT, pick("Rr"), null, "p");
+    const bits = '<rect class="bit b1" x="22" y="16" width="1" height="1"/><rect class="bit b2" x="24" y="15" width="1" height="1"/><rect class="bit b3" x="21" y="15" width="1" height="1"/>';
+    return `${scene}<g class="screen">${screen}</g><g class="bits">${bits}</g><g class="drop">${body}<g class="eyes">${eyes}</g><g class="arm">${arm}</g></g>`;
   })();
-  const mascotSVG = (w) => MASCOT_SVG.replace('<svg class="mascot"', `<svg class="mascot" width="${w}" height="${w}"`);
+  // full scene (32x23), or just ACE's head and body for small spots like avatars
+  const mascotSVG = (w, head) => head
+    ? `<svg class="mascot head" width="${w}" height="${Math.round(w * 19 / 16)}" viewBox="0 3 16 19" shape-rendering="crispEdges" aria-hidden="true">${MASCOT_INNER}</svg>`
+    : `<svg class="mascot" width="${w}" height="${Math.round(w * 23 / 32)}" viewBox="0 0 32 23" shape-rendering="crispEdges" aria-hidden="true">${MASCOT_INNER}</svg>`;
   function paintPixelArt() {
-    for (const el of document.querySelectorAll("[data-mascot]")) el.innerHTML = mascotSVG(+el.dataset.mascot || 32);
+    for (const el of document.querySelectorAll("[data-mascot]")) el.innerHTML = mascotSVG(+el.dataset.mascot || 32, "head" in el.dataset);
     const WAVE = [
       "......FFFF......",
       "....FFAAAAFF....",
@@ -562,6 +605,7 @@ a { color: inherit; }
     codeEmpty: $("codeEmpty"), frame: $("frame"), frameWrap: $("frameWrap"), previewEmpty: $("previewEmpty"),
     consoleToggle: $("consoleToggle"), consoleCount: $("consoleCount"), consoleBody: $("consoleBody"), fixBtn: $("fixBtn"),
     copyBtn: $("copyBtn"), fsBtn: $("fsBtn"), dlBtn: $("dlBtn"), runBtn: $("runBtn"), workMsg: $("workMsg"),
+    spritesPane: $("spritesPane"), spriteGrid: $("spriteGrid"), sCount: $("sCount"),
   };
 
   // ---------- storage (per-viewer, best effort) ----------
@@ -743,6 +787,7 @@ a { color: inherit; }
     workTab = t;
     els.codePane.hidden = t !== "code";
     els.previewPane.hidden = t !== "preview";
+    els.spritesPane.hidden = t !== "sprites";
     for (const b of document.querySelectorAll("[data-work]")) b.setAttribute("aria-pressed", String(b.dataset.work === t));
     els.copyBtn.hidden = t !== "code" || !activePath;
     els.fsBtn.hidden = t !== "preview" || !document.fullscreenEnabled;
@@ -751,6 +796,7 @@ a { color: inherit; }
       for (const b of document.querySelectorAll("[data-pane-btn]")) b.setAttribute("aria-pressed", String(b.dataset.paneBtn === t));
     }
     if (t === "preview" && previewStale) runPreview();
+    if (t === "sprites") renderSprites(); else cancelAnimationFrame(spriteRAF);
   }
   const showWork = (t) => (isMobile() ? setPane(t) : setWorkTab(t));
   for (const b of document.querySelectorAll("[data-pane-btn]")) b.onclick = () => setPane(b.dataset.paneBtn);
@@ -779,7 +825,7 @@ a { color: inherit; }
   function renderWelcome() {
     const w = document.createElement("div");
     w.className = "welcome";
-    const art = document.createElement("div"); art.innerHTML = mascotSVG(84);
+    const art = document.createElement("div"); art.innerHTML = mascotSVG(136);
     const h = document.createElement("h1"); h.textContent = "What are we building?";
     const grid = document.createElement("div"); grid.className = "starters";
     for (const [label, prompt, star] of STARTERS) {
@@ -810,7 +856,7 @@ a { color: inherit; }
   }
   function aiNode() {
     const m = document.createElement("div"); m.className = "msg ai";
-    const who = document.createElement("div"); who.className = "who"; who.innerHTML = mascotSVG(22); who.append(document.createTextNode(settings.name));
+    const who = document.createElement("div"); who.className = "who"; who.innerHTML = mascotSVG(18, true); who.append(document.createTextNode(settings.name));
     const content = document.createElement("div"); content.className = "content";
     m.append(who, content);
     return { m, content };
@@ -822,6 +868,11 @@ a { color: inherit; }
       const run = document.createElement("button"); run.type = "button"; run.className = "primary-act"; run.textContent = "▶ Run preview";
       run.onclick = () => { runPreview(); showWork("preview"); };
       row.append(run);
+    }
+    if (parsed.files.some((f) => /\.(js|mjs|json)$/i.test(f.path)) && spritesFor(chat)) {
+      const sprites = document.createElement("button"); sprites.type = "button"; sprites.className = "primary-act"; sprites.textContent = "View sprites";
+      sprites.onclick = () => showWork("sprites");
+      row.append(sprites);
     }
     const copy = document.createElement("button"); copy.type = "button"; copy.textContent = "Copy reply";
     copy.onclick = async () => {
@@ -979,7 +1030,119 @@ a { color: inherit; }
     els.hl.innerHTML = highlightText(text, langOf(activePath || "")) + (text.endsWith("\n") || !text ? " " : "");
   }
   function syncScroll() { els.hlPre.scrollTop = els.code.scrollTop; els.hlPre.scrollLeft = els.code.scrollLeft; }
-  function renderFiles(follow) { ensureActive(); renderFileTabs(); loadEditor(follow); }
+  function renderFiles(follow) { ensureActive(); renderFileTabs(); loadEditor(follow); if (!ctl) updateSpritesTab(); }
+
+  // ---------- sprites: read SPRITES from the project and show them animated ----------
+  let spriteCache = { key: null, data: null }, spriteRAF = 0, spriteCards = [];
+  function sliceBalanced(src, start) {
+    let depth = 0, quote = null;
+    for (let i = start; i < src.length; i++) {
+      const c = src[i];
+      if (quote) { if (c === "\\") i++; else if (c === quote) quote = null; continue; }
+      if (c === '"' || c === "'" || c === "`") { quote = c; continue; }
+      if (c === "{") depth++;
+      else if (c === "}" && --depth === 0) return src.slice(start, i + 1);
+    }
+    return null;
+  }
+  function readSprites(files) {
+    const paths = Object.keys(files).filter((p) => /\.(js|mjs|json)$/i.test(p))
+      .sort((a, b) => (/sprite/i.test(b) ? 1 : 0) - (/sprite/i.test(a) ? 1 : 0));
+    for (const p of paths) {
+      const src = files[p] || "";
+      let text = null;
+      if (/\.json$/i.test(p)) text = src.trim();
+      else { const at = src.search(/\bSPRITES\s*=\s*\{/); if (at < 0) continue; text = sliceBalanced(src, src.indexOf("{", at)); }
+      if (!text) continue;
+      let obj;
+      try { obj = JSON.parse(text.replace(/,(\s*[}\]])/g, "$1")); } catch { continue; }
+      const list = [];
+      for (const [name, def] of Object.entries(obj || {})) {
+        if (!def || typeof def !== "object" || !def.palette || typeof def.palette !== "object") continue;
+        let frames = Array.isArray(def.frames) ? def.frames : Array.isArray(def.pixels) ? [def.pixels] : null;
+        if (!frames) continue;
+        frames = frames.filter((f) => Array.isArray(f) && f.length && f.every((r) => typeof r === "string"));
+        if (!frames.length) continue;
+        const w = Math.max(...frames.flat().map((r) => [...r].length)), h = Math.max(...frames.map((f) => f.length));
+        if (!w || w > 160 || h > 160) continue;
+        list.push({ name, palette: def.palette, frames, w, h, fps: Math.min(30, Math.max(1, +def.fps || 6)) });
+      }
+      if (list.length) return { path: p, list };
+    }
+    return null;
+  }
+  function spritesFor(chat) {
+    if (!chat) return null;
+    const key = Object.keys(chat.files).filter((p) => /\.(js|mjs|json)$/i.test(p)).map((p) => p + "\n" + chat.files[p]).join("\u0000");
+    if (key !== spriteCache.key) spriteCache = { key, data: readSprites(chat.files) };
+    return spriteCache.data;
+  }
+  function frameCanvas(sp, rows, scale) {
+    const c = document.createElement("canvas");
+    c.width = sp.w * scale; c.height = sp.h * scale;
+    const g = c.getContext("2d");
+    rows.forEach((row, y) => [...row].forEach((ch, x) => {
+      const col = sp.palette[ch];
+      if (col && ch !== "." && ch !== " ") { g.fillStyle = col; g.fillRect(x * scale, y * scale, scale, scale); }
+    }));
+    return c;
+  }
+  function updateSpritesTab() {
+    const data = spritesFor(current());
+    const n = data ? data.list.length : 0;
+    for (const b of document.querySelectorAll('[data-work="sprites"], [data-pane-btn="sprites"]')) b.hidden = !n;
+    els.sCount.textContent = n || "";
+    if (!n && workTab === "sprites") setWorkTab("code");
+    else if (workTab === "sprites") renderSprites();
+  }
+  async function saveSpriteSheet(sp) {
+    const s = Math.min(16, Math.max(1, Math.floor(512 / Math.max(sp.w * sp.frames.length, sp.h))));
+    const sheet = document.createElement("canvas");
+    sheet.width = sp.w * s * sp.frames.length; sheet.height = sp.h * s;
+    const g = sheet.getContext("2d");
+    sp.frames.forEach((f, i) => g.drawImage(frameCanvas(sp, f, s), i * sp.w * s, 0));
+    const blob = await new Promise((r) => sheet.toBlob(r, "image/png"));
+    try { await downloads.save({ filename: `${slug(sp.name)}.png`, data: blob }); flash("Download started"); }
+    catch (e) { flash(e?.code === "declined" ? "Download cancelled" : "Couldn't save the PNG here"); }
+  }
+  function renderSprites() {
+    cancelAnimationFrame(spriteRAF);
+    els.spriteGrid.textContent = ""; spriteCards = [];
+    const data = spritesFor(current());
+    if (!data) return;
+    for (const sp of data.list) {
+      const scale = Math.max(1, Math.floor(Math.min(120 / sp.w, 120 / sp.h)));
+      const frames = sp.frames.map((f) => frameCanvas(sp, f, scale));
+      const card = document.createElement("div"); card.className = "sprite-card";
+      const stage = document.createElement("div"); stage.className = "sprite-stage";
+      const cv = document.createElement("canvas"); cv.width = frames[0].width; cv.height = frames[0].height;
+      cv.setAttribute("role", "img"); cv.setAttribute("aria-label", `${sp.name} sprite`);
+      stage.append(cv);
+      const meta = document.createElement("div"); meta.className = "sprite-meta";
+      const nm = document.createElement("b"); nm.textContent = sp.name; nm.title = sp.name;
+      const info = document.createElement("small"); info.textContent = `${sp.w}×${sp.h} · ${sp.frames.length} frame${sp.frames.length > 1 ? "s" : ""}`;
+      meta.append(nm, info);
+      const acts = document.createElement("div"); acts.className = "sprite-acts";
+      const change = document.createElement("button"); change.type = "button"; change.textContent = "Change";
+      change.onclick = () => { els.input.value = `Change the "${sp.name}" sprite: `; autosize(); updateSend(); setPane("chat"); els.input.focus(); };
+      acts.append(change);
+      if (downloads) { const png = document.createElement("button"); png.type = "button"; png.textContent = "PNG"; png.title = "Download as a sprite sheet"; png.onclick = () => saveSpriteSheet(sp); acts.append(png); }
+      card.append(stage, meta, acts);
+      els.spriteGrid.append(card);
+      spriteCards.push({ sp, frames, ctx: cv.getContext("2d"), cv, last: -1 });
+    }
+    const src = document.createElement("p"); src.className = "sprite-src"; src.textContent = `From ${data.path}`;
+    els.spriteGrid.append(src);
+    const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const tick = (t) => {
+      for (const c of spriteCards) {
+        const i = still ? 0 : Math.floor(t / (1000 / c.sp.fps)) % c.frames.length;
+        if (i !== c.last) { c.ctx.clearRect(0, 0, c.cv.width, c.cv.height); c.ctx.drawImage(c.frames[i], 0, 0); c.last = i; }
+      }
+      if (!still && workTab === "sprites" && view === "chat") spriteRAF = requestAnimationFrame(tick);
+    };
+    spriteRAF = requestAnimationFrame(tick);
+  }
   function setActive(p) {
     const c = current(); if (!c) return;
     activePath = p; c.active = p;
@@ -1017,7 +1180,7 @@ a { color: inherit; }
     if (!c || !activePath || ctl) return;
     c.files[activePath] = els.code.value; c.updated = Date.now();
     paintHighlight(); syncScroll(); previewStale = true;
-    clearTimeout(saveTimer); saveTimer = setTimeout(persist, 500);
+    clearTimeout(saveTimer); saveTimer = setTimeout(() => { persist(); updateSpritesTab(); }, 500);
   });
   els.code.addEventListener("scroll", syncScroll);
   els.code.addEventListener("keydown", (e) => {
@@ -1231,12 +1394,23 @@ a { color: inherit; }
       "- Code blocks WITHOUT a file path appear only in the chat. Use them for short examples and explanations.",
       "WEB PROJECTS AND THE PREVIEW",
       "- Use index.html as the entry point. Link local files with relative paths: <link rel=\"stylesheet\" href=\"style.css\"> and <script src=\"app.js\"><\/script>. Use classic scripts; imports between local ES modules do not work.",
-      "- The preview cannot make network requests (fetch or XHR to any server fails) and cannot load images from the internet, so draw with CSS, inline SVG, emoji or canvas, and use built-in sample data instead of APIs.",
+      "- The preview cannot make network requests (fetch or XHR to any server fails) and cannot load images from the internet, so make every graphic yourself (see ART AND SOUND) and use built-in sample data instead of APIs.",
       "- External libraries load only as <script src> tags from https://cdnjs.cloudflare.com, https://cdn.jsdelivr.net/npm/ or https://unpkg.com, pinned to an exact version. Google Fonts stylesheets work.",
       "- alert(), confirm() and prompt() don't show dialogs in the preview, so build any dialogs into the page. localStorage works but is cleared each time the preview reloads.",
       "- Other languages (Python, Java, C++ and so on) are welcome as files. The preview only runs web code, so say briefly how to run them on a computer.",
+      "ART AND SOUND: MAKE YOUR OWN, NEVER EMOJI",
+      "- Never use emoji as graphics, game pieces, characters or icons. Draw everything yourself.",
+      "- Characters, enemies, items, tiles and effects are original pixel-art sprites you design. Put every sprite in sprites.js as `const SPRITES = {...};` where the object is strict JSON (double-quoted keys, no comments, no trailing commas). Shape (rows shortened here):\n" +
+        '{ "hero": { "palette": { "k": "#1a1c2c", "b": "#3b5dc9", "l": "#73eff7", "w": "#f4f4f4" }, "frames": [ ["..kkkk..", ".kbbbbk.", "kblwwlbk"], ["..kkkk..", ".kbbbbk.", "kbwllwbk"] ], "fps": 6 } }',
+      "- Each frame is an array of equal-length strings, one character per pixel. Each character is a one-character palette key and \".\" is transparent. Use sizes like 8x8, 16x16 or 24x24 (bigger for bosses). Give sprites a dark outline, 3-5 shades for depth, highlights, and 2-4 frame animations (idle, walk, jump, attack) whose frames clearly differ, so they look hand-made rather than like coloured blocks. Keep one consistent palette across the project.",
+      "- Include this helper in sprites.js, use it to turn sprites into canvases, and drawImage them with ctx.imageSmoothingEnabled = false:\n" +
+        "function spriteFrames(name, scale) {\n  const s = SPRITES[name];\n  return s.frames.map((rows) => {\n    const c = document.createElement(\"canvas\");\n    c.width = rows[0].length * scale; c.height = rows.length * scale;\n    const g = c.getContext(\"2d\");\n    rows.forEach((row, y) => [...row].forEach((ch, x) => {\n      if (ch !== \".\" && s.palette[ch]) { g.fillStyle = s.palette[ch]; g.fillRect(x * scale, y * scale, scale, scale); }\n    }));\n    return c;\n  });\n}",
+      "- Load sprites.js before your game script. ACE Studio shows every sprite in SPRITES, animated, in its Sprites tab, so keep them all in that one object.",
+      "- Backgrounds and UI: tiles from SPRITES, canvas drawing, CSS, or inline SVG you draw yourself.",
+      "- Sound: synthesize effects and music with the Web Audio API (oscillators, noise buffers, envelopes) for a chiptune feel. Never load audio files. Start audio after the first click or key press.",
       "STYLE",
-      "- Build polished, modern, responsive projects that work on the first run. For anything beyond a tiny demo, split the code into index.html, style.css and app.js.",
+      "- Build polished, modern, responsive projects that work on the first run. For anything beyond a tiny demo, split the code into index.html, style.css and app.js (plus sprites.js when there is art).",
+      "- Games: a <canvas> with a requestAnimationFrame loop and delta time; keyboard controls plus on-screen touch buttons on phones; a title screen, score, lives or health, game over and restart; pause with P or Escape; pixel art scaled by whole numbers with smoothing off; and good game feel (particles, screen shake, hit flashes, satisfying sounds).",
       "- Before the files, write at most one short sentence. After the files, give a brief summary (2-5 bullets) of what you built and how to use it. Don't repeat the code in prose.",
       "- When asked to fix errors, find the root cause and rewrite the affected files in full.",
       "- For questions that need no files, just answer normally.",
