@@ -1,59 +1,160 @@
-<title>Kite Assistant</title>
+<title>ACE</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;800&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
 <style>
-/* Layout: one-screen app. Chat list rail on the left (drawer on phones), conversation column, composer docked at the bottom. */
+/* Layout: two views on one page. #home is a scrolling product site (hero with a live ask box, features, modes, steps, FAQ).
+   #chat is a one-screen app: chat list rail, conversation column, composer docked at the bottom. */
 :root {
-  --bg: #f3f5f7;
+  --bg: #f5f6f8;
   --panel: #ffffff;
-  --rail: #e8ecf0;
-  --fg: #16202a;
-  --muted: #5b6875;
-  --line: #d5dce3;
-  --accent: #0d6e6e;
+  --rail: #eceef3;
+  --fg: #121725;
+  --muted: #5a6274;
+  --line: #d9dde6;
+  --accent: #2343d4;
   --accent-ink: #ffffff;
-  --accent-soft: #d6ecea;
-  --user-bubble: #16202a;
-  --user-ink: #f3f5f7;
-  --code-bg: #eef1f4;
+  --accent-soft: #e2e7fb;
+  --hot: #f2a516;
+  --hot-soft: #fbe3b3;
+  --user-bubble: #121725;
+  --user-ink: #f5f6f8;
+  --code-bg: #eef0f4;
   --danger: #b3261e;
-  --font-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --shadow: rgba(18, 23, 37, .08);
+  --font-display: "Unbounded", "Segoe UI", system-ui, sans-serif;
   --font-body: "Instrument Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
   --radius: 14px;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #0f151b; --panel: #151d25; --rail: #121a21; --fg: #e4eaf0; --muted: #93a1ae;
-    --line: #26323d; --accent: #3fb8ae; --accent-ink: #062120; --accent-soft: #163634;
-    --user-bubble: #e4eaf0; --user-ink: #0f151b; --code-bg: #0b1116; --danger: #f2867e;
+    --bg: #0d1018; --panel: #141925; --rail: #10141e; --fg: #e7eaf2; --muted: #98a0b3; --line: #252c3b;
+    --accent: #7d93ff; --accent-ink: #0a0f24; --accent-soft: #1b2342; --hot: #f5b73b; --hot-soft: #4a3511;
+    --user-bubble: #e7eaf2; --user-ink: #0d1018; --code-bg: #0a0d14; --danger: #f2867e; --shadow: rgba(0, 0, 0, .35);
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
-  --bg: #0f151b; --panel: #151d25; --rail: #121a21; --fg: #e4eaf0; --muted: #93a1ae;
-  --line: #26323d; --accent: #3fb8ae; --accent-ink: #062120; --accent-soft: #163634;
-  --user-bubble: #e4eaf0; --user-ink: #0f151b; --code-bg: #0b1116; --danger: #f2867e;
+  --bg: #0d1018; --panel: #141925; --rail: #10141e; --fg: #e7eaf2; --muted: #98a0b3; --line: #252c3b;
+  --accent: #7d93ff; --accent-ink: #0a0f24; --accent-soft: #1b2342; --hot: #f5b73b; --hot-soft: #4a3511;
+  --user-bubble: #e7eaf2; --user-ink: #0d1018; --code-bg: #0a0d14; --danger: #f2867e; --shadow: rgba(0, 0, 0, .35);
   color-scheme: dark;
 }
 [hidden] { display: none !important; }
 html, body { height: 100%; }
-body { background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 15px; line-height: 1.55; overflow: hidden; }
+body { background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 15px; line-height: 1.55; overflow-y: auto; overflow-x: hidden; }
+body.view-chat { overflow: hidden; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 50; background: var(--bg); }
 button, textarea, input, select { font: inherit; color: inherit; }
 button { cursor: pointer; }
+a { color: inherit; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid var(--line); background: var(--panel); border-radius: 10px;
+  padding: 9px 16px; font-weight: 600; text-decoration: none; white-space: nowrap; }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.btn.primary:hover { filter: brightness(1.08); }
+.btn.big { padding: 13px 22px; font-size: 16px; border-radius: 12px; }
+
+.logo { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; font-family: var(--font-display); font-weight: 800; font-size: 20px; letter-spacing: 0.04em; }
+.logo svg { flex: none; }
+
+/* ================= HOME ================= */
+.wrap { max-width: 1120px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.site-head { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 10; background: color-mix(in srgb, var(--bg) 90%, transparent);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
+.head-row { display: flex; align-items: center; gap: 20px; padding-block: 12px; }
+.site-nav { display: flex; gap: 4px; margin-left: auto; }
+.site-nav button { background: none; border: 0; padding: 8px 12px; border-radius: 8px; color: var(--muted); font-weight: 500; }
+.site-nav button:hover { color: var(--fg); background: var(--rail); }
+
+.hero { padding-block: clamp(40px, 8vw, 96px) clamp(40px, 6vw, 72px); }
+.hero-grid { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr); gap: clamp(32px, 5vw, 64px); align-items: center; }
+.eyebrow { margin: 0 0 18px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.12em; font-weight: 600; color: var(--accent); }
+.hero h1 { font-family: var(--font-display); font-weight: 800; font-size: clamp(38px, 6.2vw, 68px); line-height: 1.02; letter-spacing: -0.03em; margin: 0 0 20px; text-wrap: balance; }
+.hl { background: linear-gradient(transparent 64%, var(--hot-soft) 64%, var(--hot-soft) 92%, transparent 92%); padding-inline: 2px; }
+.lede { font-size: 18px; color: var(--muted); margin: 0 0 28px; max-width: 34em; }
+.ask { display: flex; gap: 8px; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 6px; box-shadow: 0 6px 24px var(--shadow); max-width: 560px; }
+.ask:focus-within { border-color: var(--accent); }
+.ask input { flex: 1; min-width: 0; border: 0; background: none; outline: none; padding: 10px 12px; font-size: 16px; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.chips button { background: none; border: 1px solid var(--line); border-radius: 999px; padding: 6px 13px; font-size: 13px; color: var(--muted); }
+.chips button:hover { color: var(--fg); border-color: var(--accent); }
+
+.demo { margin: 0; background: var(--panel); border: 1px solid var(--line); border-radius: 20px; padding: 20px; box-shadow: 0 18px 50px var(--shadow);
+  display: flex; flex-direction: column; gap: 14px; min-width: 0; position: relative; }
+.demo-tag { align-self: flex-start; font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600; color: var(--muted);
+  border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; }
+.demo-user { align-self: flex-end; background: var(--user-bubble); color: var(--user-ink); padding: 9px 14px; border-radius: 16px 16px 4px 16px; max-width: 85%; }
+.demo .content { font-size: 14px; }
+
+.section { padding-block: clamp(48px, 7vw, 88px); scroll-margin-top: 64px; }
+.section + .section { border-top: 1px solid var(--line); }
+.section h2 { font-family: var(--font-display); font-weight: 700; font-size: clamp(26px, 3.6vw, 38px); line-height: 1.1; letter-spacing: -0.02em; margin: 0 0 12px; text-wrap: balance; }
+.section .sub { color: var(--muted); margin: 0 0 36px; max-width: 40em; font-size: 16px; }
+
+.features { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px 32px; }
+.feature { display: flex; flex-direction: column; gap: 8px; }
+.feature .ic { width: 40px; height: 40px; border-radius: 11px; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; margin-bottom: 4px; }
+.feature h3 { margin: 0; font-size: 17px; font-weight: 600; }
+.feature p { margin: 0; color: var(--muted); }
+
+.modes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.mode-card { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 22px; display: flex; flex-direction: column; gap: 10px; }
+.mode-card .name { font-family: var(--font-display); font-weight: 700; font-size: 22px; }
+.mode-card p { margin: 0; color: var(--muted); }
+.meter { display: flex; gap: 4px; }
+.meter i { height: 6px; flex: 1; border-radius: 3px; background: var(--line); }
+.meter i.on { background: var(--accent); }
+.meter-label { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); }
+.mode-card.default { border-color: var(--accent); }
+.mode-card .badge { align-self: flex-start; font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent); background: var(--accent-soft); border-radius: 6px; padding: 2px 8px; }
+
+.steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 32px; counter-reset: step; }
+.step { display: flex; flex-direction: column; gap: 8px; }
+.step::before { counter-increment: step; content: counter(step); font-family: var(--font-display); font-weight: 700; font-size: 15px; width: 36px; height: 36px; border-radius: 50%;
+  border: 2px solid var(--accent); color: var(--accent); display: grid; place-items: center; margin-bottom: 6px; }
+.step h3 { margin: 0; font-size: 17px; font-weight: 600; }
+.step p { margin: 0; color: var(--muted); }
+
+.faq { display: flex; flex-direction: column; max-width: 760px; }
+.faq details { border-bottom: 1px solid var(--line); }
+.faq summary { cursor: pointer; list-style: none; padding: 18px 0; font-weight: 600; font-size: 16px; display: flex; justify-content: space-between; gap: 16px; }
+.faq summary::-webkit-details-marker { display: none; }
+.faq summary::after { content: "+"; font-family: var(--font-display); color: var(--accent); font-size: 20px; line-height: 1; }
+.faq details[open] summary::after { content: "−"; }
+.faq details p { margin: 0 0 18px; color: var(--muted); max-width: 62ch; }
+
+.cta { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 18px; }
+.cta h2 { margin: 0; }
+.site-foot { border-top: 1px solid var(--line); padding-block: 24px calc(24px + env(safe-area-inset-bottom, 0px)); color: var(--muted); font-size: 13px; }
+.foot-row { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: center; }
+.foot-row .logo { font-size: 15px; }
+
+@media (max-width: 900px) {
+  .hero-grid { grid-template-columns: minmax(0, 1fr); }
+  .features, .modes, .steps { grid-template-columns: minmax(0, 1fr); }
+  .features { gap: 24px; }
+  .site-nav { display: none; }
+  .head-row { justify-content: space-between; }
+}
+@media (min-width: 600px) and (max-width: 900px) {
+  .features { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 480px) {
+  .ask { flex-direction: column; }
+  .ask .btn { width: 100%; }
+}
+
+/* ================= CHAT APP ================= */
 .app { display: grid; grid-template-columns: 264px minmax(0, 1fr); height: 100%; }
-
-/* Rail */
 .rail { background: var(--rail); border-right: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0;
   padding-left: max(14px, env(safe-area-inset-left, 0px)); padding-right: 14px; padding-block: 16px; gap: 14px; }
-.brand { display: flex; align-items: center; gap: 10px; font-family: var(--font-display); font-weight: 700; font-size: 20px; letter-spacing: -0.01em; }
-.brand svg { flex: none; }
 .new-chat { display: flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid var(--line); background: var(--panel);
   border-radius: 10px; padding: 9px 12px; font-weight: 600; }
 .new-chat:hover { border-color: var(--accent); }
@@ -64,22 +165,22 @@ button { cursor: pointer; }
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--fg); }
 .chat-item:hover { background: var(--panel); }
 .chat-item.active { background: var(--accent-soft); }
-.chat-item .del { background: none; border: 0; color: var(--muted); padding: 6px 8px; border-radius: 6px; opacity: 0; }
+.chat-item .del { background: none; border: 0; color: var(--muted); padding: 6px 8px; border-radius: 6px; opacity: 0; white-space: nowrap; }
 .chat-item:hover .del, .chat-item.active .del, .chat-item .del:focus-visible { opacity: 1; }
 .chat-item .del:hover { color: var(--danger); }
-.rail-foot { border-top: 1px solid var(--line); padding-top: 12px; display: flex; flex-direction: column; gap: 6px; }
-.rail-foot button { text-align: left; background: none; border: 0; padding: 7px 4px; color: var(--muted); display: flex; gap: 8px; align-items: center; border-radius: 6px; }
-.rail-foot button:hover { color: var(--fg); }
+.empty-list { color: var(--muted); font-size: 13px; padding: 4px 2px; }
+.rail-foot { border-top: 1px solid var(--line); padding-top: 12px; display: flex; flex-direction: column; gap: 2px; }
+.rail-foot button, .rail-foot a { text-align: left; background: none; border: 0; padding: 7px 4px; color: var(--muted); display: flex; gap: 8px; align-items: center; border-radius: 6px; text-decoration: none; }
+.rail-foot button:hover, .rail-foot a:hover { color: var(--fg); }
 
-/* Main */
 .main { display: flex; flex-direction: column; min-height: 0; min-width: 0; }
 .topbar { display: flex; align-items: center; gap: 12px; padding-block: 12px; border-bottom: 1px solid var(--line);
   padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
 .menu-btn { display: none; background: none; border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; }
-.chat-title { font-family: var(--font-display); font-weight: 500; font-size: 17px; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chat-title { font-weight: 600; font-size: 16px; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .mode { display: flex; background: var(--rail); border: 1px solid var(--line); border-radius: 999px; padding: 3px; gap: 2px; }
 .mode button { border: 0; background: none; padding: 5px 12px; border-radius: 999px; font-size: 13px; font-weight: 500; color: var(--muted); }
-.mode button[aria-pressed="true"] { background: var(--panel); color: var(--fg); box-shadow: 0 1px 2px rgba(0,0,0,.12); }
+.mode button[aria-pressed="true"] { background: var(--panel); color: var(--fg); box-shadow: 0 1px 2px var(--shadow); }
 
 .scroller { flex: 1; overflow-y: auto; min-height: 0; }
 .thread { max-width: 760px; margin: 0 auto; padding-block: 28px 20px; display: flex; flex-direction: column; gap: 22px;
@@ -92,15 +193,14 @@ button { cursor: pointer; }
 .msg.user .thumbs { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
 .msg.user .thumbs img { width: 72px; height: 72px; object-fit: cover; border-radius: 10px; border: 1px solid var(--line); }
 .msg.user .thumbs .gone { font-size: 12px; color: var(--muted); }
-.msg.ai { align-items: stretch; }
-.who { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); font-weight: 600; letter-spacing: 0.02em; }
-.who .dot { width: 18px; height: 18px; border-radius: 6px; background: var(--accent); display: grid; place-items: center; }
+.who { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); font-weight: 700; letter-spacing: 0.06em; }
+.who .dot { width: 20px; height: 20px; border-radius: 6px; background: var(--accent); display: grid; place-items: center; }
 .content { min-width: 0; overflow-wrap: anywhere; }
 .content > :first-child { margin-top: 0; }
 .content > :last-child { margin-bottom: 0; }
 .content p { margin: 0 0 .8em; }
-.content h1, .content h2, .content h3 { font-family: var(--font-display); line-height: 1.25; margin: 1.1em 0 .45em; text-wrap: balance; }
-.content h1 { font-size: 1.35em; } .content h2 { font-size: 1.2em; } .content h3 { font-size: 1.05em; }
+.content h1, .content h2, .content h3 { font-family: var(--font-body); font-weight: 600; line-height: 1.3; margin: 1.1em 0 .45em; text-wrap: balance; }
+.content h1 { font-size: 1.3em; } .content h2 { font-size: 1.17em; } .content h3 { font-size: 1.05em; }
 .content ul, .content ol { padding-left: 1.4em; margin: 0 0 .8em; }
 .content li { margin: .2em 0; }
 .content a { color: var(--accent); }
@@ -119,9 +219,8 @@ button { cursor: pointer; }
 .msg-actions button:hover { background: var(--rail); color: var(--fg); }
 .note { font-size: 13px; color: var(--danger); }
 
-/* Welcome */
 .welcome { padding-top: 6vh; display: flex; flex-direction: column; gap: 18px; }
-.welcome h1 { font-family: var(--font-display); font-weight: 700; font-size: clamp(28px, 5vw, 40px); line-height: 1.1; letter-spacing: -0.02em; margin: 0; text-wrap: balance; }
+.welcome h1 { font-family: var(--font-display); font-weight: 700; font-size: clamp(26px, 4.4vw, 36px); line-height: 1.1; letter-spacing: -0.02em; margin: 0; text-wrap: balance; }
 .welcome p { margin: 0; color: var(--muted); max-width: 52ch; }
 .starters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .starters button { text-align: left; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 2px; }
@@ -129,10 +228,9 @@ button { cursor: pointer; }
 .starters b { font-weight: 600; font-size: 14px; }
 .starters span { color: var(--muted); font-size: 13px; }
 
-/* Composer */
 .composer-wrap { padding-block: 10px 14px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
 .composer { max-width: 760px; margin: 0 auto; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 8px; display: flex; flex-direction: column; gap: 6px;
-  box-shadow: 0 2px 10px rgba(16, 32, 42, .06); }
+  box-shadow: 0 2px 10px var(--shadow); }
 .composer:focus-within { border-color: var(--accent); }
 .attachments { display: flex; gap: 8px; flex-wrap: wrap; padding: 4px 4px 0; }
 .attachments .att { position: relative; }
@@ -143,28 +241,24 @@ button { cursor: pointer; }
 .icon-btn { background: none; border: 0; color: var(--muted); padding: 7px; border-radius: 8px; display: grid; place-items: center; }
 .icon-btn:hover { color: var(--fg); background: var(--rail); }
 .hint { flex: 1; font-size: 12px; color: var(--muted); min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.send { background: var(--accent); color: var(--accent-ink); border: 0; border-radius: 10px; padding: 8px 14px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+.send { background: var(--accent); color: var(--accent-ink); border: 0; border-radius: 10px; padding: 8px 14px; font-weight: 600; display: flex; align-items: center; gap: 6px; margin-left: auto; }
 .send:disabled { opacity: .4; cursor: default; }
 .send.stop { background: var(--fg); color: var(--bg); }
 .status { max-width: 760px; margin: 6px auto 0; font-size: 12px; color: var(--muted); text-align: center; }
+.unavailable { max-width: 760px; margin: 0 auto 8px; border: 1px solid var(--line); background: var(--panel); border-radius: 10px; padding: 10px 14px; font-size: 13px; color: var(--muted); }
 
-/* Settings panel */
-.sheet-backdrop { position: fixed; inset: 0; background: rgba(8, 14, 20, .45); z-index: 30; }
+.sheet-backdrop { position: fixed; inset: 0; background: rgba(8, 10, 20, .5); z-index: 30; }
 .sheet { position: fixed; z-index: 31; top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(520px, calc(100% - 32px)); max-height: calc(100% - 48px); overflow-y: auto;
   background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 20px; display: flex; flex-direction: column; gap: 14px; }
-.sheet h2 { margin: 0; font-family: var(--font-display); font-size: 20px; }
+.sheet h2 { margin: 0; font-family: var(--font-display); font-size: 19px; font-weight: 700; }
 .sheet label { font-weight: 600; font-size: 13px; display: flex; flex-direction: column; gap: 6px; }
 .sheet label small { font-weight: 400; color: var(--muted); }
 .sheet input, .sheet textarea { border: 1px solid var(--line); background: var(--bg); border-radius: 8px; padding: 9px 10px; font-weight: 400; }
 .sheet textarea { min-height: 120px; resize: vertical; }
 .sheet .row { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
-.btn { border: 1px solid var(--line); background: var(--panel); border-radius: 9px; padding: 8px 14px; font-weight: 600; }
-.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
 
-.unavailable { max-width: 760px; margin: 0 auto 8px; border: 1px solid var(--line); background: var(--panel); border-radius: 10px; padding: 10px 14px; font-size: 13px; color: var(--muted); }
-
-.drop-overlay { position: fixed; inset: 0; z-index: 40; background: color-mix(in srgb, var(--accent) 18%, transparent); border: 3px dashed var(--accent); display: grid; place-items: center;
-  font-family: var(--font-display); font-size: 22px; color: var(--fg); pointer-events: none; }
+.drop-overlay { position: fixed; inset: 0; z-index: 40; background: color-mix(in srgb, var(--accent) 16%, transparent); border: 3px dashed var(--accent); display: grid; place-items: center;
+  font-family: var(--font-display); font-size: 20px; color: var(--fg); pointer-events: none; }
 
 @media (max-width: 760px) {
   .app { grid-template-columns: minmax(0, 1fr); }
@@ -176,15 +270,179 @@ button { cursor: pointer; }
   .mode button { padding: 5px 9px; }
   .hint { display: none; }
 }
-@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
 </style>
 
-<div class="app">
-  <aside class="rail" id="rail" aria-label="Chats">
-    <div class="brand">
-      <svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true"><path d="M13 1 L24 11 L13 25 L2 11 Z" fill="var(--accent)"/><path d="M13 1 L13 25 M2 11 L24 11" stroke="var(--panel)" stroke-width="1.6" fill="none"/></svg>
-      <span id="brandName">Kite</span>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="ace-mark" viewBox="0 0 24 24"><path d="M12 1.5 L22.5 22.5 H17 L12 11.5 L7 22.5 H1.5 Z" fill="var(--accent)"/><circle cx="12" cy="18.2" r="2.3" fill="var(--hot)"/></symbol>
+</svg>
+
+<!-- ================= HOME ================= -->
+<div id="home">
+  <header class="site-head">
+    <div class="wrap head-row">
+      <a class="logo" href="#home" aria-label="ACE home"><svg width="26" height="26"><use href="#ace-mark"/></svg>ACE</a>
+      <nav class="site-nav" aria-label="Sections">
+        <button type="button" data-scroll="features">Features</button>
+        <button type="button" data-scroll="modes">Modes</button>
+        <button type="button" data-scroll="how">How it works</button>
+        <button type="button" data-scroll="faq">FAQ</button>
+      </nav>
+      <a class="btn primary" href="#chat">Open ACE</a>
     </div>
+  </header>
+
+  <section class="hero">
+    <div class="wrap hero-grid">
+      <div>
+        <p class="eyebrow">Personal AI assistant · powered by Claude</p>
+        <h1>Ask <span class="hl">ACE</span> anything.</h1>
+        <p class="lede">Plans, emails, code, homework, big decisions. ACE answers in seconds, reads your photos and screenshots, and keeps your chats so you can pick up where you left off.</p>
+        <form class="ask" id="heroAsk">
+          <label for="heroInput" class="sr-only">Ask ACE a question</label>
+          <input id="heroInput" type="text" placeholder="What do you want to know?" autocomplete="off">
+          <button class="btn primary" type="submit">Ask ACE
+            <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M2 7h10M8 3l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+        </form>
+        <div class="chips" id="heroChips"></div>
+      </div>
+      <figure class="demo" aria-label="Example conversation with ACE">
+        <figcaption class="demo-tag">Example chat</figcaption>
+        <div class="demo-user">Plan a cheap 2-day trip to Lisbon</div>
+        <div class="msg">
+          <div class="who"><span class="dot"><svg width="12" height="12" viewBox="0 0 24 24"><path d="M12 1.5 L22.5 22.5 H17 L12 11.5 L7 22.5 H1.5 Z" fill="var(--accent-ink)"/></svg></span>ACE</div>
+          <div class="content">
+            <p><strong>Day 1: Alfama and Baixa</strong></p>
+            <ul>
+              <li>Wander Alfama's lanes up to Miradouro de Santa Luzia for free views</li>
+              <li>Grab a bifana (pork sandwich) at a local tasca for lunch</li>
+              <li>Watch the sunset from Praça do Comércio</li>
+            </ul>
+            <p><strong>Day 2: Belém</strong></p>
+            <ul>
+              <li>Ride tram 15E out to Belém</li>
+              <li>Try a pastel de nata where they were first sold</li>
+            </ul>
+            <p>Want a budget breakdown or places to stay?</p>
+          </div>
+        </div>
+      </figure>
+    </div>
+  </section>
+
+  <section class="section" id="features">
+    <div class="wrap">
+      <h2>One assistant for everything on your list</h2>
+      <p class="sub">ACE is a full AI assistant, not a search box. Talk to it the way you'd talk to a smart friend.</p>
+      <div class="features">
+        <div class="feature">
+          <div class="ic"><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5h14M3 10h10M3 15h7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/></svg></div>
+          <h3>Answers as it writes</h3>
+          <p>Replies stream in live, so you start reading straight away. Stop it any time.</p>
+        </div>
+        <div class="feature">
+          <div class="ic"><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><rect x="2.5" y="4" width="15" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="7" cy="8.5" r="1.5" fill="currentColor"/><path d="M3 15l4.5-4 3 2.5 3-3 3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></div>
+          <h3>Sees your images</h3>
+          <p>Attach, paste or drag in photos and screenshots. Ask about homework, errors, menus or anything else.</p>
+        </div>
+        <div class="feature">
+          <div class="ic"><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M4 16V9M10 16V4M16 16v-5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></div>
+          <h3>Three thinking modes</h3>
+          <p>Fast for quick answers, Smart for everyday use, Deep when the problem is hard.</p>
+        </div>
+        <div class="feature">
+          <div class="ic"><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M4 3.5h12v14l-6-3.5-6 3.5z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></div>
+          <h3>Keeps your chats</h3>
+          <p>Every conversation is saved in your browser. Come back later and carry on.</p>
+        </div>
+        <div class="feature">
+          <div class="ic"><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M13.5 3.5l3 3L8 15H5v-3z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></div>
+          <h3>Make it yours</h3>
+          <p>Give ACE standing instructions: answer in Spanish, keep it short, explain like a teacher.</p>
+        </div>
+        <div class="feature">
+          <div class="ic"><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M7 6l-4 4 4 4M13 6l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <h3>Writes and fixes code</h3>
+          <p>Clean code blocks, tables and lists. Paste a bug and get a fix with the reason why.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="modes">
+    <div class="wrap">
+      <h2>Choose how hard ACE thinks</h2>
+      <p class="sub">Switch modes from the top of any chat. Faster modes reply sooner; deeper modes take longer and reason more carefully.</p>
+      <div class="modes">
+        <div class="mode-card">
+          <div class="name">Fast</div>
+          <div class="meter" aria-hidden="true"><i class="on"></i><i></i><i></i></div>
+          <div class="meter-label"><span>Speed first</span><span>Replies in seconds</span></div>
+          <p>Quick questions, rewrites, translations and casual chat.</p>
+        </div>
+        <div class="mode-card default">
+          <span class="badge">Default</span>
+          <div class="name">Smart</div>
+          <div class="meter" aria-hidden="true"><i class="on"></i><i class="on"></i><i></i></div>
+          <div class="meter-label"><span>Balanced</span><span>Thinks before answering</span></div>
+          <p>Careful, clear answers for everyday work, study and planning.</p>
+        </div>
+        <div class="mode-card">
+          <div class="name">Deep</div>
+          <div class="meter" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i></div>
+          <div class="meter-label"><span>Most capable</span><span>Takes longest</span></div>
+          <p>Hard maths, tricky code, long documents and big decisions.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="how">
+    <div class="wrap">
+      <h2>Start in under a minute</h2>
+      <p class="sub">No download and no new account. ACE runs right here, on Claude.</p>
+      <div class="steps">
+        <div class="step"><h3>Open ACE</h3><p>Press Open ACE, or type a question in the box at the top of this page.</p></div>
+        <div class="step"><h3>Allow Claude</h3><p>When you send your first message, choose Allow so ACE can answer using your Claude account.</p></div>
+        <div class="step"><h3>Ask anything</h3><p>Type, paste or attach an image. Follow up as much as you like; ACE remembers the conversation.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="faq">
+    <div class="wrap">
+      <h2>Questions</h2>
+      <p class="sub">The short answers.</p>
+      <div class="faq">
+        <details><summary>What powers ACE?</summary><p>ACE runs on Claude, the AI made by Anthropic. Your messages go to Claude and its answers come back to this page.</p></details>
+        <details><summary>Does it cost anything?</summary><p>There's no separate fee. ACE uses your own Claude account, so messages count toward your Claude plan's usage, the same as chatting on claude.ai.</p></details>
+        <details><summary>Where are my chats saved?</summary><p>In the browser you're using. They don't sync to other devices, and clearing your browser data deletes them. Attached images aren't kept after you close the page.</p></details>
+        <details><summary>Can I change how ACE talks?</summary><p>Yes. In the chat, open Customize ACE to change its name or give it standing instructions such as "keep answers short" or "reply in French".</p></details>
+        <details><summary>Can I share ACE with friends?</summary><p>Yes, from the Share menu on this page. Each person chats using their own Claude account and has their own saved chats.</p></details>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="wrap cta">
+      <h2>Ready when you are.</h2>
+      <a class="btn primary big" href="#chat">Open ACE</a>
+    </div>
+  </section>
+
+  <footer class="site-foot">
+    <div class="wrap foot-row">
+      <a class="logo" href="#home"><svg width="20" height="20"><use href="#ace-mark"/></svg>ACE</a>
+      <span>Powered by Claude · Chats stay in your browser</span>
+    </div>
+  </footer>
+</div>
+
+<!-- ================= CHAT APP ================= -->
+<div class="app" id="app" hidden>
+  <aside class="rail" id="rail" aria-label="Chats">
+    <a class="logo" href="#home" aria-label="ACE home"><svg width="26" height="26"><use href="#ace-mark"/></svg><span id="brandName">ACE</span></a>
     <button class="new-chat" id="newChat" type="button">
       <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
       New chat
@@ -194,8 +452,12 @@ button { cursor: pointer; }
     <div class="rail-foot">
       <button type="button" id="openSettings">
         <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="2.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 1v2.2M8 12.8V15M1 8h2.2M12.8 8H15M3 3l1.6 1.6M11.4 11.4L13 13M3 13l1.6-1.6M11.4 4.6L13 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-        Customize assistant
+        Customize ACE
       </button>
+      <a href="#home">
+        <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 7.5L8 2l6 5.5V14H2z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+        ACE website
+      </a>
     </div>
   </aside>
 
@@ -205,7 +467,7 @@ button { cursor: pointer; }
         <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M2 4h14M2 9h14M2 14h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
       </button>
       <div class="chat-title" id="chatTitle">New chat</div>
-      <div class="mode" role="group" aria-label="Response mode">
+      <div class="mode" role="group" aria-label="Thinking mode">
         <button type="button" data-tier="quick" aria-pressed="false" title="Fastest replies">Fast</button>
         <button type="button" data-tier="default" aria-pressed="true" title="Balanced quality and speed">Smart</button>
         <button type="button" data-tier="complex" aria-pressed="false" title="Most capable, thinks longest">Deep</button>
@@ -220,7 +482,7 @@ button { cursor: pointer; }
       <div class="unavailable" id="unavailable" hidden></div>
       <form class="composer" id="composer">
         <div class="attachments" id="attachments" hidden></div>
-        <textarea id="input" rows="1" placeholder="Message Kite…" aria-label="Message"></textarea>
+        <textarea id="input" rows="1" placeholder="Message ACE…" aria-label="Message"></textarea>
         <div class="composer-row">
           <button type="button" class="icon-btn" id="attachBtn" aria-label="Attach image" title="Attach image" hidden>
             <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M15 8.5l-6.3 6.3a4 4 0 01-5.7-5.7L9.6 2.5a2.7 2.7 0 013.8 3.8L7 12.7a1.3 1.3 0 01-1.9-1.9L11 5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
@@ -232,19 +494,19 @@ button { cursor: pointer; }
           </button>
         </div>
       </form>
-      <div class="status" id="status">Replies use your own Claude account. Chats are saved in this browser only.</div>
+      <div class="status" id="status">ACE runs on Claude using your own account. Chats are saved in this browser only.</div>
     </div>
   </main>
 </div>
 
 <div class="sheet-backdrop" id="sheetBackdrop" hidden></div>
 <div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle" hidden>
-  <h2 id="sheetTitle">Customize assistant</h2>
+  <h2 id="sheetTitle">Customize ACE</h2>
   <label for="setName">Assistant name
     <input id="setName" type="text" maxlength="40">
   </label>
   <label for="setPersona">Instructions
-    <small>How it should behave: tone, expertise, what to focus on. Sent with every message.</small>
+    <small>How ACE should behave: tone, expertise, language, what to focus on. Sent with every message.</small>
     <textarea id="setPersona"></textarea>
   </label>
   <div class="row">
@@ -257,18 +519,20 @@ button { cursor: pointer; }
 
 <script>
 (() => {
-  const DEFAULT_NAME = "Kite";
-  const DEFAULT_PERSONA = "You are a sharp, friendly, genuinely useful assistant. Give direct answers first, then detail if it helps. Use Markdown (headings, lists, code blocks) when it makes things clearer. Be honest when you are unsure.";
+  const DEFAULT_NAME = "ACE";
+  const DEFAULT_PERSONA = "You are ACE, a sharp, friendly AI assistant powered by Claude, made by Anthropic. Give the direct answer first, then detail if it helps. Use Markdown (headings, lists, code blocks) when it makes things clearer. Say so when you're unsure.";
   const STARTERS = [
-    ["Plan my week", "Help me plan a productive week: I work 9-5 and want to fit in gym 3x and learning a new skill."],
+    ["Plan my week", "Help me plan a productive week: I work 9-5 and want to fit in the gym 3 times and learning a new skill."],
     ["Write an email", "Write a short, polite email asking my landlord to fix a leaking tap this week."],
     ["Explain something", "Explain how the stock market works like I'm a smart 15-year-old."],
     ["Fix my code", "Here's a Python function that should return the largest number in a list but crashes on an empty list. Fix it:\n\ndef biggest(nums):\n    best = nums[0]\n    for n in nums:\n        if n > best:\n            best = n\n    return best"],
   ];
   const MAX_TURNS = 40;
+  const DOT = '<span class="dot"><svg width="12" height="12" viewBox="0 0 24 24"><path d="M12 1.5 L22.5 22.5 H17 L12 11.5 L7 22.5 H1.5 Z" fill="var(--accent-ink)"/></svg></span>';
 
   const $ = (id) => document.getElementById(id);
   const els = {
+    home: $("home"), app: $("app"), heroAsk: $("heroAsk"), heroInput: $("heroInput"), heroChips: $("heroChips"),
     rail: $("rail"), chatList: $("chatList"), newChat: $("newChat"), thread: $("thread"), scroller: $("scroller"),
     input: $("input"), composer: $("composer"), sendBtn: $("sendBtn"), chatTitle: $("chatTitle"), menuBtn: $("menuBtn"),
     attachBtn: $("attachBtn"), fileInput: $("fileInput"), attachments: $("attachments"), status: $("status"),
@@ -281,32 +545,69 @@ button { cursor: pointer; }
     get(k, fallback) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : fallback; } catch { return fallback; } },
     set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
   };
-  let settings = store.get("kite.settings", { name: DEFAULT_NAME, persona: DEFAULT_PERSONA, tier: "default" });
-  let chats = store.get("kite.chats", []);          // [{id, title, updated, turns:[{role, content, images?}]}]
-  let currentId = store.get("kite.current", null);
-  const saveChats = () => store.set("kite.chats", chats);
-  const saveSettings = () => store.set("kite.settings", settings);
+  const oldSettings = store.get("kite.settings", {});
+  let settings = store.get("ace.settings", null) || { name: DEFAULT_NAME, persona: DEFAULT_PERSONA, tier: oldSettings.tier || "default" };
+  let chats = store.get("ace.chats", null) || store.get("kite.chats", []);   // carry over chats from the earlier version
+  let currentId = store.get("ace.current", null) || store.get("kite.current", null);
+  const saveChats = () => store.set("ace.chats", chats);
+  const saveSettings = () => store.set("ace.settings", settings);
   const current = () => chats.find((c) => c.id === currentId) || null;
 
   // ---------- state ----------
   let sample = null;
   let sampleState = "loading"; // loading | ready | off
-  let pendingImages = [];      // [{blob, url}]
-  let ctl = null;              // AbortController of the running call
+  let pendingImages = [];
+  let ctl = null;
   let imagesAllowed = false;
-  const imageUrls = new Map(); // message key -> object URLs (in memory only)
+  const imageUrls = new Map();
+  const isDesktop = () => matchMedia("(min-width: 761px)").matches;
 
   const hasMd = typeof window.marked !== "undefined" && typeof window.DOMPurify !== "undefined";
   if (hasMd) marked.setOptions({ breaks: true, gfm: true });
   const esc = (s) => s.replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[ch]);
   const md = (text) => hasMd
-    ? DOMPurify.sanitize(marked.parse(text || ""), { ADD_ATTR: ["target"] })
+    ? DOMPurify.sanitize(marked.parse(text || ""))
     : "<p>" + esc(text || "").replace(/\n/g, "<br>") + "</p>";
+
+  // ---------- routing: #chat shows the app, anything else shows the website ----------
+  let view = null;
+  function route() {
+    const v = location.hash === "#chat" ? "chat" : "home";
+    if (v === view) return;
+    view = v;
+    document.body.classList.toggle("view-chat", v === "chat");
+    els.home.hidden = v !== "home";
+    els.app.hidden = v !== "chat";
+    if (v === "chat") { renderChatList(); renderThread(); if (isDesktop()) setTimeout(() => els.input.focus(), 0); }
+    else { closeRail(); document.body.scrollTop = 0; document.documentElement.scrollTop = 0; }
+  }
+  window.addEventListener("hashchange", route);
+
+  // ---------- home page ----------
+  for (const [label, prompt] of STARTERS) {
+    const b = document.createElement("button");
+    b.type = "button"; b.textContent = label;
+    b.onclick = () => startFromHome(prompt);
+    els.heroChips.append(b);
+  }
+  els.heroAsk.addEventListener("submit", (e) => { e.preventDefault(); const q = els.heroInput.value.trim(); els.heroInput.value = ""; startFromHome(q); });
+  for (const b of document.querySelectorAll("[data-scroll]")) {
+    b.onclick = () => $(b.dataset.scroll)?.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
+  }
+  function startFromHome(prompt) {
+    if (ctl) { location.hash = "chat"; route(); return; }
+    const c = current();
+    if (!c || c.turns.length) createChat();
+    els.input.value = prompt || ""; autosize(); updateSend();
+    location.hash = "chat"; route();
+    if (prompt && sampleState === "ready") send();
+  }
 
   // ---------- rendering ----------
   function renderChatList() {
     els.chatList.textContent = "";
-    const sorted = [...chats].sort((a, b) => b.updated - a.updated);
+    const sorted = chats.filter((c) => c.turns.length).sort((a, b) => b.updated - a.updated);
+    if (!sorted.length) { const li = document.createElement("li"); li.className = "empty-list"; li.textContent = "Your chats will appear here."; els.chatList.append(li); return; }
     for (const c of sorted) {
       const li = document.createElement("li");
       li.className = "chat-item" + (c.id === currentId ? " active" : "");
@@ -334,7 +635,8 @@ button { cursor: pointer; }
       const b = document.createElement("button");
       b.type = "button";
       const t = document.createElement("b"); t.textContent = label;
-      const s = document.createElement("span"); s.textContent = prompt.split("\n")[0].slice(0, 70) + (prompt.length > 70 ? "…" : "");
+      const first = prompt.split("\n")[0];
+      const s = document.createElement("span"); s.textContent = first.length > 70 ? first.slice(0, 68) + "…" : first;
       b.append(t, s);
       b.onclick = () => { els.input.value = prompt; autosize(); updateSend(); els.input.focus(); };
       grid.append(b);
@@ -361,7 +663,7 @@ button { cursor: pointer; }
     const m = document.createElement("div");
     m.className = "msg ai";
     const who = document.createElement("div"); who.className = "who";
-    who.innerHTML = '<span class="dot"><svg width="10" height="10" viewBox="0 0 26 26"><path d="M13 1 L24 11 L13 25 L2 11 Z" fill="var(--accent-ink)"/></svg></span>';
+    who.innerHTML = DOT;
     who.append(document.createTextNode(settings.name));
     const content = document.createElement("div"); content.className = "content";
     m.append(who, content);
@@ -373,7 +675,7 @@ button { cursor: pointer; }
     const copy = document.createElement("button"); copy.type = "button"; copy.textContent = "Copy";
     copy.onclick = async () => {
       try { await navigator.clipboard.writeText(text); copy.textContent = "Copied"; }
-      catch { const r = document.createRange(); r.selectNodeContents(m.querySelector(".content")); const s = getSelection(); s.removeAllRanges(); s.addRange(r); copy.textContent = "Selected — press Ctrl+C"; }
+      catch { const r = document.createRange(); r.selectNodeContents(m.querySelector(".content")); const s = getSelection(); s.removeAllRanges(); s.addRange(r); copy.textContent = "Selected: press Ctrl+C"; }
       setTimeout(() => (copy.textContent = "Copy"), 1800);
     };
     row.append(copy);
@@ -386,9 +688,10 @@ button { cursor: pointer; }
   }
 
   function renderThread() {
-    els.thread.textContent = "";
     const c = current();
     els.chatTitle.textContent = c?.title || "New chat";
+    if (ctl) return;                       // never rebuild while a reply is streaming in
+    els.thread.textContent = "";
     if (!c || c.turns.length === 0) { renderWelcome(); return; }
     c.turns.forEach((t, i) => {
       if (t.role === "user") els.thread.append(userNode(t, c.id + ":" + i));
@@ -396,7 +699,7 @@ button { cursor: pointer; }
         const { m, content } = aiNode();
         content.innerHTML = md(t.content);
         if (t.note) { const n = document.createElement("div"); n.className = "note"; n.textContent = t.note; m.append(n); }
-        addActions(m, t.content, i === c.turns.length - 1 && !ctl);
+        addActions(m, t.content, i === c.turns.length - 1);
         els.thread.append(m);
       }
     });
@@ -413,27 +716,31 @@ button { cursor: pointer; }
   }
 
   // ---------- chats ----------
+  function createChat() {
+    const chat = { id: "c" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), title: "", updated: Date.now(), turns: [] };
+    chats = chats.filter((c) => c.turns.length);       // drop other empty drafts
+    chats.push(chat); currentId = chat.id; store.set("ace.current", currentId); saveChats();
+    renderChatList(); renderThread();
+  }
   function newChat() {
     if (ctl) return;
     const c = current();
-    if (c && c.turns.length === 0) { renderThread(); els.input.focus(); return; }
-    const chat = { id: "c" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), title: "", updated: Date.now(), turns: [] };
-    chats.push(chat); currentId = chat.id; store.set("kite.current", currentId); saveChats();
-    renderChatList(); renderThread(); els.input.focus();
+    if (!c || c.turns.length) createChat(); else renderThread();
+    closeRail(); els.input.focus();
   }
   function switchChat(id) {
     if (ctl) return;
-    currentId = id; store.set("kite.current", id); renderChatList(); renderThread();
+    currentId = id; store.set("ace.current", id); renderChatList(); renderThread();
   }
   function deleteChat(id, btn) {
-    if (btn.dataset.confirm !== "1") {          // two-step confirm inside the page
+    if (btn.dataset.confirm !== "1") {
       btn.dataset.confirm = "1"; btn.textContent = "Delete?"; btn.style.opacity = 1; btn.style.color = "var(--danger)";
       setTimeout(() => { if (btn.isConnected) { btn.dataset.confirm = ""; btn.textContent = "✕"; btn.style.color = ""; btn.style.opacity = ""; } }, 2500);
       return;
     }
     if (ctl && id === currentId) ctl.abort();
     chats = chats.filter((c) => c.id !== id); saveChats();
-    if (currentId === id) { currentId = chats.sort((a, b) => b.updated - a.updated)[0]?.id || null; store.set("kite.current", currentId); }
+    if (currentId === id) { currentId = [...chats].sort((a, b) => b.updated - a.updated)[0]?.id || null; store.set("ace.current", currentId); }
     renderChatList(); renderThread();
   }
 
@@ -481,17 +788,17 @@ button { cursor: pointer; }
   els.attachBtn.onclick = () => els.fileInput.click();
   els.fileInput.onchange = () => { addFiles(els.fileInput.files); els.fileInput.value = ""; };
   let dragDepth = 0;
-  document.addEventListener("dragenter", (e) => { if (imagesAllowed && e.dataTransfer?.types?.includes("Files")) { dragDepth++; els.dropOverlay.hidden = false; } });
+  document.addEventListener("dragenter", (e) => { if (view === "chat" && imagesAllowed && e.dataTransfer?.types?.includes("Files")) { dragDepth++; els.dropOverlay.hidden = false; } });
   document.addEventListener("dragleave", () => { if (--dragDepth <= 0) { dragDepth = 0; els.dropOverlay.hidden = true; } });
-  document.addEventListener("dragover", (e) => { if (imagesAllowed) e.preventDefault(); });
-  document.addEventListener("drop", (e) => { e.preventDefault(); dragDepth = 0; els.dropOverlay.hidden = true; addFiles(e.dataTransfer?.files || []); });
+  document.addEventListener("dragover", (e) => { if (view === "chat" && imagesAllowed) e.preventDefault(); });
+  document.addEventListener("drop", (e) => { if (view !== "chat") return; e.preventDefault(); dragDepth = 0; els.dropOverlay.hidden = true; addFiles(e.dataTransfer?.files || []); });
 
   els.newChat.onclick = newChat;
   for (const b of document.querySelectorAll(".mode button")) b.onclick = () => { settings.tier = b.dataset.tier; saveSettings(); applyBrand(); };
 
   // ---------- talking to Claude ----------
   const ERR = {
-    not_granted: "You haven't allowed this app to use Claude. Reload the page and choose Allow to chat.",
+    not_granted: "ACE needs permission to use Claude. Reload the page and choose Allow when asked.",
     sampling_disabled: "Claude isn't available on this account.",
     rate_limited: "You've hit a usage limit. Wait a little, then try again.",
     session_expired: "Your sign-in expired. Sign in to Claude again, then retry.",
@@ -507,10 +814,11 @@ button { cursor: pointer; }
     const rules = `${settings.persona.trim() || DEFAULT_PERSONA}\n\nYour name is ${settings.name}. Today is ${new Date().toDateString()}. The conversation follows.`;
     const recent = turns.slice(-MAX_TURNS);
     while (recent.length && recent[0].role !== "user") recent.shift();
+    const last = turns[turns.length - 1];
     const msgs = recent.map((t) => ({
       role: t.role,
       content: t.role === "user"
-        ? (t.content || "(see image)") + (t.imageCount && t !== turns[turns.length - 1] ? `\n[${t.imageCount} image(s) were attached earlier]` : "")
+        ? (t.content || "(see image)") + (t.imageCount && t !== last ? `\n[${t.imageCount} image(s) were attached earlier]` : "")
         : t.content,
     }));
     return [{ role: "user", content: rules }, ...msgs];
@@ -526,8 +834,8 @@ button { cursor: pointer; }
     if (sampleState !== "ready" || ctl) return;
     const text = els.input.value.trim();
     if (!text && pendingImages.length === 0) return;
-    let chat = current();
-    if (!chat) { newChat(); chat = current(); }
+    if (!current()) createChat();
+    const chat = current();
     const images = pendingImages.map((p) => p.blob);
     const turn = { role: "user", content: text };
     if (images.length) turn.imageCount = images.length;
@@ -562,11 +870,11 @@ button { cursor: pointer; }
       if (images.length) opts.images = images;
       const res = await sample(buildInput(chat.turns), opts);
       finalText = res.text;
-      if (res.truncated) note = "The reply was cut short. Ask it to continue.";
+      if (res.truncated) note = "The reply was cut short. Ask ACE to continue.";
     } catch (e) {
       finalText = e?.text || "";
       if (e?.code === "cancelled") note = finalText ? "Stopped." : "";
-      else if (PERMANENT.has(e?.code)) { disableChat(ERR[e.code] || "Claude isn't available in this view."); note = ERR[e.code] || ""; }
+      else if (PERMANENT.has(e?.code)) { note = ERR[e.code] || "Claude isn't available here."; disableChat(note); }
       else note = ERR[e?.code] || ERR.upstream_error;
       if (e?.code === "refused") finalText = "";
     } finally {
@@ -574,19 +882,16 @@ button { cursor: pointer; }
     }
     if (finalText) chat.turns.push(note ? { role: "assistant", content: finalText, note } : { role: "assistant", content: finalText });
     chat.updated = Date.now(); saveChats();
-    if (currentId === chat.id) {
-      renderThread();
-      if (!finalText && note) { const n = document.createElement("div"); n.className = "note"; n.textContent = note; els.thread.append(n); scrollToEnd(); }
-    }
-    renderChatList();
-    els.input.focus();
+    renderThread(); renderChatList();
+    if (!finalText && note && currentId === chat.id) { const n = document.createElement("div"); n.className = "note"; n.textContent = note; els.thread.append(n); scrollToEnd(); }
+    if (isDesktop()) els.input.focus();
   }
 
   function disableChat(msg) {
     sampleState = "off"; els.unavailable.hidden = false; els.unavailable.textContent = msg; updateSend();
   }
 
-  // ---------- settings sheet ----------
+  // ---------- settings ----------
   function openSheet() { els.setName.value = settings.name; els.setPersona.value = settings.persona; els.sheet.hidden = false; els.sheetBackdrop.hidden = false; els.setName.focus(); closeRail(); }
   function closeSheet() { els.sheet.hidden = true; els.sheetBackdrop.hidden = true; }
   $("openSettings").onclick = openSheet;
@@ -603,22 +908,23 @@ button { cursor: pointer; }
   // ---------- mobile drawer ----------
   function closeRail() { els.rail.classList.remove("open"); }
   els.menuBtn.onclick = (e) => { e.stopPropagation(); els.rail.classList.toggle("open"); };
-  document.addEventListener("click", (e) => { if (els.rail.classList.contains("open") && !els.rail.contains(e.target) && e.target !== els.menuBtn) closeRail(); });
+  document.addEventListener("click", (e) => { if (els.rail.classList.contains("open") && !els.rail.contains(e.target) && !els.menuBtn.contains(e.target)) closeRail(); });
 
   // ---------- boot ----------
-  if (!chats.find((c) => c.id === currentId)) currentId = chats.sort((a, b) => b.updated - a.updated)[0]?.id || null;
-  applyBrand(); renderChatList(); renderThread(); autosize();
+  chats = chats.filter((c) => c.turns.length || c.id === currentId);
+  if (!chats.find((c) => c.id === currentId)) currentId = [...chats].sort((a, b) => b.updated - a.updated)[0]?.id || null;
+  applyBrand(); route(); autosize();
   els.status.textContent = "Connecting to Claude…";
 
   (async () => {
     try { sample = window.claude ? await window.claude.use("sample") : null; } catch { sample = null; }
     if (!sample) {
-      disableChat("Chat works when this page is opened on claude.ai, signed in to Claude.");
+      disableChat("ACE can chat when this page is opened on claude.ai while signed in to Claude.");
       els.status.textContent = "Not connected to Claude.";
       return;
     }
     sampleState = "ready";
-    els.status.textContent = "Replies use your own Claude account. Chats are saved in this browser only.";
+    els.status.textContent = "ACE runs on Claude using your own account. Chats are saved in this browser only.";
     try { const lim = await sample.limits(); imagesAllowed = !!lim?.images; } catch { imagesAllowed = false; }
     els.attachBtn.hidden = !imagesAllowed;
     updateSend();
