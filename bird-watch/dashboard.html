@@ -81,7 +81,9 @@
   .live-bar p { margin: 0; color: var(--muted); font-size: 13px; }
   button { font: inherit; }
   .btn { min-height: 40px; padding: 0 16px; border-radius: 10px; border: 0; background: var(--accent); color: var(--accent-ink); font-weight: 600; cursor: pointer; }
+  .btn.secondary { background: transparent; color: var(--ink); border: 1px solid var(--line); }
   .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .buttons { display: flex; flex-wrap: wrap; gap: 8px; }
   .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
   .visitors { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
@@ -93,7 +95,14 @@
 
   .feed { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
   .sighting { display: flex; flex-direction: column; padding: 0; overflow: hidden; }
-  .sighting img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; background: var(--frame); display: block; }
+  .media { position: relative; }
+  .media img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; background: var(--frame); display: block; }
+  .play {
+    position: absolute; left: 10px; bottom: 10px; min-height: 32px; padding: 0 12px;
+    border: 0; border-radius: 999px; background: rgba(8, 12, 10, 0.72); color: #FFFFFF;
+    font-size: 13px; font-weight: 600; cursor: pointer;
+  }
+  .play:focus-visible { outline: 2px solid #FFFFFF; outline-offset: 2px; }
   .sighting .body { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 10px; }
   .meta { display: flex; justify-content: space-between; gap: 8px; font-family: var(--mono); font-size: 12px; color: var(--muted); }
   .summary { margin: 0; }
@@ -122,6 +131,7 @@
     <div class="pills">
       <span class="pill" id="cameraPill"><span class="dot"></span><span id="cameraText">Camera</span></span>
       <span class="pill" id="claudePill"><span class="dot"></span><span id="claudeText">Claude</span></span>
+      <span class="pill" id="alertsPill"><span class="dot"></span><span id="alertsText">Alerts</span></span>
       <span class="pill"><span class="num" id="checksText">0 / 0</span>&nbsp;checks today</span>
     </div>
   </header>
@@ -141,7 +151,10 @@
       </div>
       <div class="live-bar">
         <p id="lastCheck">No checks yet</p>
-        <button class="btn" id="checkNow" type="button">Check now</button>
+        <div class="buttons">
+          <button class="btn secondary" id="testAlert" type="button" hidden>Send test alert</button>
+          <button class="btn" id="checkNow" type="button">Check now</button>
+        </div>
       </div>
     </div>
     <div class="card">
@@ -154,7 +167,7 @@
   <section>
     <h2>Sightings</h2>
     <div class="feed" id="feed"></div>
-    <p class="empty-feed" id="feedEmpty">When Claude spots an animal, the photo and what it noticed show up here.</p>
+    <p class="empty-feed" id="feedEmpty">When Claude spots an animal, a photo, a short clip and what it noticed show up here.</p>
   </section>
 </div>
 
@@ -162,6 +175,7 @@
 const $ = (id) => document.getElementById(id);
 let cameraOk = false;
 let feedKey = "";
+let alertsOn = { phone: false, email: false };
 
 // Make an element with a class and text. Text is never treated as HTML.
 function el(tag, className, text) {
@@ -201,8 +215,16 @@ function render(s) {
   cameraOk = s.camera_ok;
   $("cameraPill").className = "pill " + (s.camera_ok ? "on" : "off");
   $("cameraText").textContent = s.camera_ok ? "Camera on" : "Camera off";
-  $("claudePill").className = "pill " + (s.checking ? "busy" : "on");
-  $("claudeText").textContent = s.checking ? "Claude is looking…" : "Claude ready";
+  $("claudePill").className = "pill " + (s.activity ? "busy" : "on");
+  $("claudeText").textContent =
+    s.activity === "recording" ? "Recording a clip…" :
+    s.activity === "looking" ? "Claude is watching…" : "Claude ready";
+
+  alertsOn = s.alerts;
+  const ways = [s.alerts.phone && "phone", s.alerts.email && "email"].filter(Boolean);
+  $("alertsPill").className = "pill " + (ways.length ? "on" : "");
+  $("alertsText").textContent = ways.length ? "Alerts: " + ways.join(" + ") : "Alerts off";
+  $("testAlert").hidden = ways.length === 0;
   $("checksText").textContent = s.checks_today + " / " + s.max_checks;
   $("lastCheck").textContent = s.last_check ? "Last check " + niceTime(s.last_check) : "No checks yet";
   $("liveEmpty").hidden = s.camera_ok;
@@ -218,7 +240,7 @@ function render(s) {
   alertBox.hidden = !warning;
   if (warning) {
     alertBox.replaceChildren(
-      el("strong", "", "An animal may need help (" + niceTime(warning.time) + ")"),
+      el("strong", "", "Something doesn't look right (" + niceTime(warning.time) + ")"),
       document.createTextNode(warning.attention_reason || warning.summary)
     );
   }
@@ -274,11 +296,25 @@ function renderFeed(recent) {
     }
 
     if (entry.photo) {
+      const media = el("div", "media");
       const img = el("img");
-      img.src = "/photos/" + encodeURIComponent(entry.photo);
+      img.src = "/saved/" + encodeURIComponent(entry.photo);
       img.alt = entry.summary || "Sighting photo";
       img.loading = "lazy";
-      card.append(img);
+      img.addEventListener("error", () => media.remove()); // old files are deleted after KEEP_DAYS
+      media.append(img);
+      if (entry.clip) {
+        const play = el("button", "play", "▶ Play clip");
+        play.type = "button";
+        let playing = false;
+        play.addEventListener("click", () => {
+          playing = !playing;
+          img.src = "/saved/" + encodeURIComponent(playing ? entry.clip : entry.photo);
+          play.textContent = playing ? "■ Show photo" : "▶ Play clip";
+        });
+        media.append(play);
+      }
+      card.append(media);
     }
     body.append(meta, el("p", "summary", entry.summary || ""));
 
@@ -323,6 +359,23 @@ $("checkNow").addEventListener("click", async () => {
     $("lastCheck").textContent = "Couldn't reach Bird Watch.";
   }
   setTimeout(() => { button.disabled = false; refresh(); }, 1500);
+});
+
+$("testAlert").addEventListener("click", async () => {
+  const button = $("testAlert");
+  button.disabled = true;
+  $("lastCheck").textContent = "Sending a test alert…";
+  try {
+    const response = await fetch("/api/test-alert", { method: "POST" });
+    const sent = await response.json();
+    const results = [];
+    if (alertsOn.phone) results.push(sent.phone ? "Phone notification sent" : "Phone notification failed (see the terminal)");
+    if (alertsOn.email) results.push(sent.email ? "Email sent" : "Email failed (see the terminal)");
+    $("lastCheck").textContent = results.join(". ") + ".";
+  } catch (error) {
+    $("lastCheck").textContent = "Couldn't reach Bird Watch.";
+  }
+  button.disabled = false;
 });
 
 refresh();
