@@ -520,8 +520,9 @@ a { color: inherit; }
     ["Python script", "Write a Python script that renames every photo in a folder to the date it was taken, then explain how to run it."],
     ["Explain code", "Explain this JavaScript line by line, like I'm new to coding:\n\nconst unique = [...new Set(numbers)].sort((a, b) => a - b);"],
   ];
-  const MAX_TURNS = 30;
-  const FILES_BUDGET = 150000;
+  // No app-side caps. The only ceiling is the platform's per-message size (sample.limits().maxPromptBytes).
+  let maxPromptBytes = 262144, imageMax = Infinity;
+  const bytesOf = (s) => new TextEncoder().encode(s).length;
   const THINKING = '<span class="thinking"><i></i><i></i><i></i>thinking</span>';
 
   // ---------- pixel art: ACE (a water drop) at his laptop, and the tide ----------
@@ -1064,7 +1065,7 @@ a { color: inherit; }
         frames = frames.filter((f) => Array.isArray(f) && f.length && f.every((r) => typeof r === "string"));
         if (!frames.length) continue;
         const w = Math.max(...frames.flat().map((r) => [...r].length)), h = Math.max(...frames.map((f) => f.length));
-        if (!w || w > 160 || h > 160) continue;
+        if (!w || !h) continue;
         list.push({ name, palette: def.palette, frames, w, h, fps: Math.min(30, Math.max(1, +def.fps || 6)) });
       }
       if (list.length) return { path: p, list };
@@ -1259,11 +1260,10 @@ a { color: inherit; }
   }
   window.addEventListener("message", (e) => {
     if (e.source !== els.frame.contentWindow || !e.data || e.data.__ace !== 1) return;
-    addConsole(String(e.data.level), String(e.data.text).slice(0, 4000));
+    addConsole(String(e.data.level), String(e.data.text));
   });
   function addConsole(level, text) {
     consoleLines.push({ level: ["error", "warn"].includes(level) ? level : "log", text });
-    if (consoleLines.length > 300) consoleLines.shift();
     if (level === "error" && !consoleOpen) consoleOpen = true;
     renderConsole();
   }
@@ -1334,7 +1334,7 @@ a { color: inherit; }
   }
   function addFiles(files) {
     if (!imagesAllowed) return;
-    for (const f of files) { if (!f.type.startsWith("image/")) continue; if (pendingImages.length >= 5) break; pendingImages.push({ blob: f, url: URL.createObjectURL(f) }); }
+    for (const f of files) { if (!f.type.startsWith("image/")) continue; if (pendingImages.length >= imageMax) break; pendingImages.push({ blob: f, url: URL.createObjectURL(f) }); }
     renderAttachments(); updateSend();
   }
   els.input.addEventListener("input", () => { autosize(); updateSend(); });
@@ -1361,7 +1361,7 @@ a { color: inherit; }
     rate_limited: "You've hit a usage limit. Wait a little, then try again.",
     session_expired: "Your sign-in expired. Sign in to Claude again, then retry.",
     refused: "Claude declined that request. Try rephrasing it.",
-    prompt_too_large: "This project is too big to send in one go. Start a new project, or delete files ACE doesn't need.",
+    prompt_too_large: "This project is larger than one message can hold, even with the older chat trimmed. Download the project as .zip and start a new project for the next step.",
     image_rejected: "One of the images couldn't be used. Try a JPEG or PNG under 20 MB.",
     empty_completion: "No reply came back. Try asking in a different way.",
     upstream_error: "The connection dropped. Press Regenerate to try again.",
@@ -1371,11 +1371,8 @@ a { color: inherit; }
   function filesBlock(files) {
     const paths = sortPaths(Object.keys(files));
     if (!paths.length) return "CURRENT PROJECT FILES\nThe workspace is empty.";
-    let budget = FILES_BUDGET;
     const parts = paths.map((p) => {
       const c = files[p] ?? "";
-      if (c.length > budget) return `(${p}: ${c.length} characters, too large to include; ask the user to paste the part you need)`;
-      budget -= c.length;
       return "````" + fenceLang(p) + " " + p + "\n" + c + (c.endsWith("\n") ? "" : "\n") + "````";
     });
     return "CURRENT PROJECT FILES (exactly as they are now, including any edits the user made by hand)\n\n" + parts.join("\n\n");
@@ -1418,18 +1415,24 @@ a { color: inherit; }
       "The conversation follows.",
     ].join("\n\n");
   }
+  // Sends the whole conversation. Only if it would pass the platform's size limit does it drop the
+  // oldest messages (never the project files or the latest message). Returns null if even that is not enough.
   function buildInput(chat) {
     const turns = chat.turns;
-    const recent = turns.slice(-MAX_TURNS);
-    while (recent.length && recent[0].role !== "user") recent.shift();
     const last = turns[turns.length - 1];
-    const msgs = recent.map((t) => ({
+    const msgs = turns.map((t) => ({
       role: t.role,
       content: t.role === "user"
         ? (t.content || "(see the attached image)") + (t.imageCount && t !== last ? `\n[${t.imageCount} image(s) were attached earlier]` : "")
         : historyText(t),
     }));
-    return [{ role: "user", content: rulesText(chat) }, ...msgs];
+    const rules = { role: "user", content: rulesText(chat) };
+    const size = (from) => bytesOf(rules.content) + msgs.slice(from).reduce((n, m) => n + bytesOf(m.content), 0);
+    let start = 0;
+    while (start < msgs.length - 1 && size(start) > maxPromptBytes) start++;
+    while (start < msgs.length && msgs[start].role !== "user") start++;
+    if (size(start) > maxPromptBytes) return null;
+    return { input: [rules, ...msgs.slice(start)], trimmed: start > 0 };
   }
   function makeTitle(chat) {
     const first = chat.turns.find((t) => t.role === "user");
@@ -1465,6 +1468,9 @@ a { color: inherit; }
   }
 
   async function respond(chat, images) {
+    const built = buildInput(chat);
+    if (!built) { flash(ERR.prompt_too_large, 9000); return; }
+    if (built.trimmed) flash("Older chat was left out to fit one message. Your project files were all sent.", 6000);
     const { m, content } = aiNode();
     content.innerHTML = THINKING;
     m.classList.add("busy");
@@ -1496,7 +1502,7 @@ a { color: inherit; }
         },
       };
       if (images.length) opts.images = images;
-      const res = await sample(buildInput(chat), opts);
+      const res = await sample(built.input, opts);
       finalText = res.text; ok = true;
       if (res.truncated) note = "The reply was cut short, so the last file may be unfinished. Ask ACE to continue.";
     } catch (e) {
@@ -1565,7 +1571,7 @@ a { color: inherit; }
     }
     sampleState = "ready";
     els.status.textContent = "Saved in this browser";
-    try { const lim = await sample.limits(); imagesAllowed = !!lim?.images; } catch { imagesAllowed = false; }
+    try { const lim = await sample.limits(); imagesAllowed = !!lim?.images; if (lim?.maxPromptBytes) maxPromptBytes = lim.maxPromptBytes; if (lim?.images?.maxCount) imageMax = lim.images.maxCount; } catch { imagesAllowed = false; }
     els.attachBtn.hidden = !imagesAllowed;
     updateSend(); renderConsole();
   })();
