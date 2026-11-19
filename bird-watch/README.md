@@ -97,6 +97,41 @@ second one on your phone (the phone must be on the same Wi-Fi).
   - **Mac:** start it with `caffeinate -i python3 bird_watch.py` instead.
 - Press **Ctrl+C** in the terminal to stop it.
 
+## Watch from anywhere
+
+To open Bird Watch away from home (at school, on mobile data), use
+**Tailscale**. It's a free app (for personal use) that links your own devices
+into a private network. Your camera never goes on the public internet: only
+your devices can reach it.
+
+1. On the computer running Bird Watch, install Tailscale from
+   [tailscale.com/download](https://tailscale.com/download) and sign in.
+2. On your phone, install the Tailscale app and sign in with the **same**
+   account. Switch it on.
+3. In the Tailscale app, find your computer in the list of devices and note
+   its name, for example `my-laptop`.
+4. On your phone, open `http://my-laptop:8000` (with your computer's name).
+   If the name doesn't work, use the computer's Tailscale address instead,
+   which starts with `100.`, for example `http://100.101.102.103:8000`.
+5. Put that address in `WEBSITE_ADDRESS` in `bird_watch.py` and restart.
+   Then tapping a phone notification, or the link in an alert email, opens
+   Bird Watch.
+
+Keep Tailscale switched on on your phone whenever you want to look in. If
+Windows asks whether Python may use the network, click **Allow**.
+
+### Add a password (recommended)
+
+Put a password in a setting called `BIRD_WATCH_PASSWORD`, the same way as the
+API key in step 3 of Setup:
+
+- **Windows:** `setx BIRD_WATCH_PASSWORD "pick-a-good-password"`, then open a new terminal.
+- **Mac or Linux:** `export BIRD_WATCH_PASSWORD="pick-a-good-password"`
+
+Restart Bird Watch. The browser now asks for a username and password: the
+username can be anything, and the password is the one you picked. Your
+browser can remember it.
+
 ## Turn on alerts
 
 You can use either one, or both. After setting them up, restart the program
@@ -144,6 +179,7 @@ Open `bird_watch.py` and change the values at the top:
 | `PHONE_ALERT_TOPIC` | Your ntfy topic | `""` (off) |
 | `EMAIL_TO` / `EMAIL_FROM` | Where email alerts go, and the Gmail that sends them | `""` (off) |
 | `ALERT_EVERY_MINUTES` | At most one animal alert this often | `15` |
+| `WEBSITE_ADDRESS` | Your Tailscale address, so alerts link to Bird Watch | `""` (no link) |
 
 ## Cost
 
@@ -161,8 +197,10 @@ real usage in the Claude Console.
 
 ## Privacy
 
-- Anyone on your Wi-Fi can open the website and see the camera. It can't be
-  opened from outside your home network.
+- Without a password, anyone on your Wi-Fi can open the website and see the
+  camera. Set `BIRD_WATCH_PASSWORD` to stop that.
+- From outside your home, only devices signed in to your Tailscale account
+  can open it.
 - Photos and clips are saved on your computer. Frames from each clip are sent
   to Claude to be checked. When an alert goes out, the clip goes through the
   ntfy service and your email.
@@ -175,5 +213,8 @@ real usage in the Claude Console.
 - **"Claude didn't accept the API key":** redo step 3, then restart.
 - **Test email fails:** check the app password and both email addresses, then
   restart. The terminal shows the exact error.
+- **Website won't open away from home:** check Tailscale is switched on on
+  your phone and on the computer, and that Bird Watch is running. Try the
+  `100.` address instead of the name.
 - **Too many checks from leaves or shadows:** raise `MOTION_SENSITIVITY` to `0.02`.
 - **Small animals far away get missed:** lower it to `0.002`, or move the camera closer.

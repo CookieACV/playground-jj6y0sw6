@@ -20,6 +20,7 @@ Then open:          http://localhost:8000
 """
 
 import base64
+import hmac
 import io
 import json
 import os
@@ -110,6 +111,14 @@ ALERT_EVERY_MINUTES = 15
 
 WEBSITE_PORT = 8000         # the number at the end of http://localhost:8000
 SAVE_FOLDER = "sightings"   # where photos, clips and the log are saved
+
+# The address you open Bird Watch at from anywhere, with Tailscale (see
+# README.md), for example "http://my-laptop:8000". Alerts then include a link
+# to it. "" = no link.
+#
+# To protect the website with a password, put one in the BIRD_WATCH_PASSWORD
+# setting (see README.md). It is NOT written here.
+WEBSITE_ADDRESS = ""
 
 
 # =====================================================================
@@ -309,6 +318,8 @@ def send_phone_alert(title, text, photo=None, clip=None):
     if not PHONE_ALERT_TOPIC:
         return False
     options = {"title": title, "message": text, "priority": "high", "tags": "warning"}
+    if WEBSITE_ADDRESS:
+        options["click"] = WEBSITE_ADDRESS  # tapping the notification opens Bird Watch
     attachment = clip or photo
     if attachment:
         options["filename"] = "clip.gif" if clip else "photo.jpg"
@@ -330,7 +341,8 @@ def send_email_alert(title, text, photo=None, clip=None):
     message["Subject"] = title
     message["From"] = EMAIL_FROM
     message["To"] = EMAIL_TO
-    message.set_content(text + "\n\nSent by Bird Watch.")
+    link = f"\n\nOpen Bird Watch: {WEBSITE_ADDRESS}" if WEBSITE_ADDRESS else ""
+    message.set_content(text + link + "\n\nSent by Bird Watch.")
     if photo:
         message.add_attachment(photo, maintype="image", subtype="jpeg", filename="photo.jpg")
     if clip:
@@ -671,7 +683,35 @@ def make_status():
 class Website(BaseHTTPRequestHandler):
     """Answers the browser. Each address (path) gives back something different."""
 
+    def password_ok(self):
+        """True if no password is set, or the browser sent the right one."""
+        password = os.environ.get("BIRD_WATCH_PASSWORD", "")
+        if not password:
+            return True
+        header = self.headers.get("Authorization", "")
+        if not header.startswith("Basic "):
+            return False
+        try:
+            login = base64.b64decode(header[len("Basic "):]).decode("utf-8")
+        except (ValueError, UnicodeDecodeError):
+            return False
+        given = login.partition(":")[2]  # the browser sends "username:password"
+        if hmac.compare_digest(given.encode("utf-8"), password.encode("utf-8")):
+            return True
+        time.sleep(1)  # slow down anyone guessing passwords
+        return False
+
+    def ask_for_password(self):
+        """Make the browser show its username and password box."""
+        self.send_response(401)
+        self.send_header("WWW-Authenticate", 'Basic realm="Bird Watch", charset="UTF-8"')
+        self.send_header("Content-Length", "0")
+        self.end_headers()
+
     def do_GET(self):
+        if not self.password_ok():
+            self.ask_for_password()
+            return
         path = urllib.parse.urlsplit(self.path).path
         if path == "/":
             self.send_file(os.path.join(FOLDER, "dashboard.html"), "text/html; charset=utf-8")
@@ -697,6 +737,9 @@ class Website(BaseHTTPRequestHandler):
             self.send_error(404)
 
     def do_POST(self):
+        if not self.password_ok():
+            self.ask_for_password()
+            return
         path = urllib.parse.urlsplit(self.path).path
         if path == "/api/check-now":
             with lock:
@@ -776,7 +819,13 @@ def main():
     print("Bird Watch is running.")
     print(f"  On this computer:             http://localhost:{WEBSITE_PORT}")
     print(f"  On a phone on the same Wi-Fi: http://{local_address()}:{WEBSITE_PORT}")
+    if WEBSITE_ADDRESS:
+        print(f"  From anywhere (Tailscale):    {WEBSITE_ADDRESS}")
     print("  Press Ctrl+C to stop.\n")
+    if os.environ.get("BIRD_WATCH_PASSWORD"):
+        print("The website asks for a password.\n")
+    else:
+        print("Tip: set BIRD_WATCH_PASSWORD to protect the website with a password (see README.md).\n")
     if not os.environ.get("ANTHROPIC_API_KEY"):
         print("Warning: ANTHROPIC_API_KEY isn't set, so Claude can't watch the video yet. "
               "See step 3 in README.md.\n")
