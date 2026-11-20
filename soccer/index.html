@@ -131,7 +131,7 @@ button:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
 const $ = s => document.querySelector(s);
 const W=105,H=68,CX=W/2,CY=H/2,GW=7.32,GH=2.44,PR=0.7,BR=0.11;
 const MATCH_REAL=180;
-const DIFF={easy:{spd:6.6,gk:5.4,think:.55,shot:18},normal:{spd:7.5,gk:6.4,think:.32,shot:21},hard:{spd:8.3,gk:7.3,think:.16,shot:24}};
+const DIFF={easy:{spd:6.6,gk:5.4,think:.55,shot:18,tk:1.2},normal:{spd:7.5,gk:6.4,think:.32,shot:21,tk:2.2},hard:{spd:8.3,gk:7.3,think:.16,shot:24,tk:3.6}};
 const BASE=[{role:'gk',x:2,y:34,n:1},{role:'df',x:22,y:24,n:4},{role:'df',x:22,y:44,n:5},{role:'fw',x:40,y:27,n:9},{role:'fw',x:40,y:41,n:10}];
 const COL={home:'#ff7a3d',away:'#3fa7ff',homeGk:'#ffe14d',awayGk:'#b07cff'};
 let view='2d', diff='normal', paused=false, S=null;
@@ -154,7 +154,7 @@ function placeKickoff(team){
   const dir=team?-1:1, k=S.players.find(p=>p.team===team&&p.i===3), m=S.players.find(p=>p.team===team&&p.i===4);
   k.x=CX-dir*0.9; k.y=CY; m.x=CX-dir*7; m.y=CY+6;
   S.ctrl=S.players.find(p=>p.team===0&&p.i===(team===0?3:4)); if(team!==0) S.ctrl=S.players.find(p=>p.team===0&&p.i===3);
-  S.lastTouch=null; S.phase='kickoff'; S.phaseT=1.3; S.charging=false; S.charge=0;
+  S.lastTouch=null; S.owner=null; S.ownT=0; S.phase='kickoff'; S.phaseT=1.3; S.charging=false; S.charge=0;
 }
 function updateHUD(){
   $('#s0').textContent=S.score[0]; $('#s1').textContent=S.score[1];
@@ -204,7 +204,7 @@ function readInput(){
 /* ---------- kicks ---------- */
 function kick(p,dx,dy,speed,vz){
   const b=S.ball, m=hyp(dx,dy)||1; b.vx=dx/m*speed; b.vy=dy/m*speed; b.vz=vz; if(b.z<.05)b.z=.05;
-  p.kickCd=.32; S.lastTouch=p;
+  p.kickCd=.32; S.lastTouch=p; S.owner=null;
 }
 const nearBall=(p,r=2.1)=>hyp(S.ball.x-p.x,S.ball.y-p.y)<r && S.ball.z<1.6;
 function humanShoot(p,power){
@@ -348,7 +348,7 @@ function update(dt){
   // ball
   const steps=2, h=dt/steps;
   for(let k=0;k<steps;k++) ballStep(h);
-  if(S.phase==='play') touches();
+  if(S.phase==='play') touches(dt);
 }
 function ballStep(dt){
   const b=S.ball;
@@ -379,8 +379,33 @@ function ballStep(dt){
     else { b.x=side<0?BR:W-BR; b.vx=-b.vx*.55; }
   }
 }
-function touches(){
+function glue(p,dt,snap){
+  // keep the ball at the dribbler's feet, just in front of where they face
+  const b=S.ball, tx=p.x+p.fx*.75, ty=p.y+p.fy*.75, f=snap?1:Math.min(1,dt*18);
+  b.x+=(tx-b.x)*f; b.y+=(ty-b.y)*f; b.z=0; b.vz=0; b.vx=p.vx; b.vy=p.vy;
+}
+function touches(dt){
   const b=S.ball; let best=null,bd=1e9;
+  S.ownT-=dt;
+  if(S.owner){
+    const o=S.owner;
+    if(S.ownT<=0){
+      for(const q of S.players){
+        if(q.team===o.team||q.kickCd>0) continue;
+        const gk=q.role==='gk'&&q!==S.ctrl, d=hyp(b.x-q.x,b.y-q.y);
+        if(d>(gk?1.35:1.0)) continue;
+        const rate= gk?10 : q===S.ctrl?9 : q.team===1?DIFF[diff].tk : 2.2;
+        if(rnd()<rate*dt){
+          o.kickCd=.45; o.vx*=.3; o.vy*=.3;
+          if(gk){ S.owner=null; const att=q.team?-1:1; kick(q,att*40,(10+rnd()*48)-q.y,22+rnd()*4,6+rnd()*3); q.kickCd=.6; return; }
+          S.owner=q; S.ownT=.5; S.lastTouch=q;
+          if(q.team===0 && q.role!=='gk'){ S.ctrl=q; S.switchT=.8; }
+          break;
+        }
+      }
+    }
+    glue(S.owner,dt,false); return;
+  }
   for(const p of S.players){
     if(p.kickCd>0) continue;
     const gk=p.role==='gk' && p!==S.ctrl;
@@ -394,13 +419,12 @@ function touches(){
     if(sp>12 && S.lastTouch && S.lastTouch.team!==p.team) banner('Save!',1);
     kick(p,att*40,(10+rnd()*48)-p.y,22+rnd()*4,6+rnd()*3); p.kickCd=.6; return;
   }
-  const s=hyp(p.vx,p.vy), bs=Math.max(s*1.25+.8,2);
-  b.vx=p.fx*bs; b.vy=p.fy*bs; if(b.z<.4){b.vz=0;b.z=0}
-  b.x=p.x+p.fx*.9; b.y=p.y+p.fy*.9;
-  p.kickCd=.1; S.lastTouch=p;
+  S.owner=p; S.ownT=.4; S.lastTouch=p;
+  if(p.team===0 && p!==S.ctrl && !S.demo){ S.ctrl=p; S.switchT=.8; }
+  glue(p,dt,false);
 }
 function goal(team,side){
-  S.score[team]++; S.phase='goal'; S.phaseT=2.6; S.kickoffTeam=1-team; S.inNet=side;
+  S.score[team]++; S.phase='goal'; S.phaseT=2.6; S.kickoffTeam=1-team; S.inNet=side; S.owner=null;
   S.charging=false; S.charge=0;
   banner(team===0?'Goal!':'Blue score',2.2); updateHUD();
 }
@@ -632,7 +656,7 @@ function demoStep(dt){
   ballStep(dt/2); ballStep(dt/2);
   S.ctrl=ctrl;
   if(S.phase==='goal'){ S.phaseT-=dt; if(S.phaseT<=0){placeKickoff(S.kickoffTeam);S.phase='play';} }
-  else touches();
+  else touches(dt);
   if(S.phase!=='goal'){S.score=[0,0];updateHUD();}
 }
 setView('2d'); resize(); requestAnimationFrame(loop);
