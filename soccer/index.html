@@ -136,7 +136,7 @@ button:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
 const $ = s => document.querySelector(s);
 const W=105,H=68,CX=W/2,CY=H/2,GW=7.32,GH=2.44,PR=0.7,BR=0.11;
 const MATCH_REAL=180;
-const DIFF={easy:{spd:6.6,gk:5.4,think:.55,shot:18,tk:1.2,sl:.5},normal:{spd:7.5,gk:6.4,think:.32,shot:21,tk:2.2,sl:1.0},hard:{spd:8.3,gk:7.3,think:.16,shot:24,tk:3.6,sl:1.7}};
+const DIFF={easy:{spd:6.6,gk:5.0,save:.42,think:.55,shot:18,tk:.9,sl:.35},normal:{spd:7.5,gk:5.8,save:.6,think:.32,shot:21,tk:1.6,sl:.7},hard:{spd:8.3,gk:6.6,save:.74,think:.16,shot:24,tk:2.8,sl:1.2}};
 const BASE=[{role:'gk',x:2,y:34,n:1},{role:'df',x:22,y:24,n:4},{role:'df',x:22,y:44,n:5},{role:'fw',x:40,y:27,n:9},{role:'fw',x:40,y:41,n:10}];
 const COL={home:'#ff7a3d',away:'#3fa7ff',homeGk:'#ffe14d',awayGk:'#b07cff'};
 let view='2d', diff='normal', paused=false, S=null;
@@ -280,9 +280,13 @@ function humanShoot(p,power){
   let dx=p.fx, dy=p.fy;
   if(dx>0.2 && W-p.x<42){ // aim assist: snap the run direction into the goal mouth
     const yAt=p.y+dy*(W-p.x)/dx;
-    if(Math.abs(yAt-CY)<9){ const ty=clamp(yAt,CY-GW/2+.45,CY+GW/2-.45); dx=W-p.x; dy=ty-p.y; }
+    if(Math.abs(yAt-CY)<9){
+      // lean the shot away from the keeper, then keep it inside the posts
+      const k=S.players.find(q=>q.team===1&&q.role==='gk'); let ty=yAt;
+      if(k && Math.abs(ty-k.y)<1.1) ty+= (ty>=k.y?1:-1)*(1.1-Math.abs(ty-k.y));
+      ty=clamp(ty,CY-GW/2+.35,CY+GW/2-.35); dx=W-p.x; dy=ty-p.y; }
   }
-  kick(p,dx,dy,12+18*power,.6+power*4.4);
+  kick(p,dx,dy,16+16*power,.4+power*3.2);
 }
 function bestMate(p,fx,fy,forward){
   let best=null,bs=-1e9;
@@ -313,12 +317,12 @@ function ai(p,dt){
   const b=S.ball, D=DIFF[diff], att=p.team?-1:1, ownGX=p.team?W:0, oppGX=p.team?0:W;
   const spd=p.team===1?D.spd:7.5;
   if(p.role==='gk'){
-    const gks=p.team===1?D.gk:6.4;
+    const gks=p.team===1?D.gk:5.4;
     let tx=ownGX+att*1.3, ty=CY+(b.y-CY)*.35;
     if(b.vx*att<-3){ const t=(tx-b.x)/b.vx; if(t>0&&t<2.2) ty=b.y+b.vy*t; }
-    ty=clamp(ty,CY-GW/2-.5,CY+GW/2+.5);
+    ty=clamp(ty,CY-GW/2+.4,CY+GW/2-.4);
     const bd=hyp(b.x-ownGX,b.y-CY), bs=hyp(b.vx,b.vy);
-    if(bd<16 && Math.abs(b.y-CY)<20 && bs<13 && (bd<8 || S.chaser[p.team] && hyp(S.chaser[p.team].x-b.x,S.chaser[p.team].y-b.y)>4)){tx=b.x;ty=b.y}
+    if(bd<12 && Math.abs(b.y-CY)<14 && bs<10 && (bd<6 || S.chaser[p.team] && hyp(S.chaser[p.team].x-b.x,S.chaser[p.team].y-b.y)>5)){tx=b.x;ty=b.y}
     moveTo(p,tx,ty,gks); return;
   }
   const poss=S.lastTouch&&S.lastTouch.team===p.team;
@@ -505,8 +509,8 @@ function touches(dt){
       for(const q of S.players){
         if(q.team===o.team||q.kickCd>0||q.down>0||q.slide>0) continue;
         const gk=q.role==='gk'&&q!==S.ctrl, d=hyp(b.x-q.x,b.y-q.y);
-        if(d>(gk?1.35:1.0)) continue;
-        const rate= gk?10 : q===S.ctrl?5 : q.team===1?DIFF[diff].tk : 2.2;
+        if(d>(gk?1.1:1.0)) continue;
+        const rate= gk?3 : q===S.ctrl?5 : q.team===1?DIFF[diff].tk : 2.2;
         if(rnd()<rate*dt){
           o.kickCd=.45; o.vx*=.3; o.vy*=.3;
           if(gk){ S.owner=null; const att=q.team?-1:1; kick(q,att*40,(10+rnd()*48)-q.y,22+rnd()*4,6+rnd()*3); q.kickCd=.6; return; }
@@ -521,14 +525,23 @@ function touches(dt){
   for(const p of S.players){
     if(p.kickCd>0||p.down>0) continue;
     const gk=p.role==='gk';
-    const reach=gk?1.35:.95, zmax=gk?2.7:1.05, d=hyp(b.x-p.x,b.y-p.y);
+    const reach=gk?1.15:.95, zmax=gk?2.35:1.05, d=hyp(b.x-p.x,b.y-p.y);
     if(d<reach && b.z<zmax && d<bd){best=p;bd=d}
   }
   if(!best) return;
   const p=best;
   if(p.role==='gk' && p!==S.ctrl){
     const att=p.team?-1:1, sp=hyp(b.vx,b.vy);
-    if(sp>12 && S.lastTouch && S.lastTouch.team!==p.team) {banner('Save!',1); SFX.ooh();}
+    if(sp>11 && S.lastTouch && S.lastTouch.team!==p.team){
+      // a real shot: the keeper can be beaten by pace, a stretch, or height
+      const base=p.team===1?DIFF[diff].save:.45, stretch=Math.max(0,hyp(b.x-p.x,b.y-p.y)-.55);
+      const chance=clamp(base*1.3-(sp-16)*.025-stretch*.6-(b.z>1.6?.15:0),.06,.9);
+      if(rnd()>chance){ p.kickCd=.8; p.down=.7; return; }   // dives and misses
+      banner('Save!',1); SFX.ooh();
+      if(sp>20 && rnd()<.55){ // parried: a loose ball that can be followed in
+        b.vx=-b.vx*.25+att*3; b.vy=(rnd()<.5?-1:1)*(6+rnd()*4); b.vz=2; b.z=Math.max(b.z,.1);
+        S.lastTouch=p; p.kickCd=.7; p.down=.6; return; }
+    }
     kick(p,att*40,(10+rnd()*48)-p.y,22+rnd()*4,6+rnd()*3); p.kickCd=.6; return;
   }
   S.owner=p; S.ownT=.4; S.lastTouch=p; SFX.tap();
