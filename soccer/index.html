@@ -73,6 +73,7 @@ button:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
       <div class="seg" role="group" aria-label="View">
         <button id="v2d" aria-pressed="true">2D</button><button id="v3d" aria-pressed="false">3D</button>
       </div>
+      <button class="btn" id="muteBtn" aria-pressed="true">Sound on</button>
       <button class="btn" id="pauseBtn">Pause</button>
     </div>
   </div>
@@ -107,7 +108,7 @@ button:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
           <kbd>E</kbd><span>Pass to the teammate you face</span>
           <kbd>F</kbd><span>Slide tackle. Time it to knock the ball loose.</span>
           <kbd>Q</kbd><span>Switch player. Keep pressing to cycle through all five, keeper included.</span>
-          <kbd>V / P</kbd><span>Toggle 2D/3D · Pause</span>
+          <kbd>V / P / M</kbd><span>Toggle 2D/3D · Pause · Sound</span>
         </div>
         <button class="go" id="startBtn">Kick off</button>
       </div>
@@ -180,6 +181,7 @@ addEventListener('keydown',e=>{
   if(e.code==='KeyF'||e.code==='KeyC') queue.push('tackle');
   if(e.code==='KeyV') setView(view==='2d'?'3d':'2d');
   if(e.code==='KeyP'||e.code==='Escape') togglePause();
+  if(e.code==='KeyM') setMuted(!AU.muted);
 });
 addEventListener('keyup',e=>{keys[e.code]=false});
 addEventListener('blur',()=>{for(const k in keys) keys[k]=false});
@@ -209,10 +211,68 @@ function readInput(){
   return {x,y,m:Math.min(1,m),sprint,shoot:!!(keys.Space||keys.KeyJ||touch.shoot)};
 }
 
+/* ---------- sound: everything is synthesized with Web Audio ---------- */
+const AU={ctx:null,muted:false};
+try{ AU.muted=localStorage.getItem('fsd-muted')==='1'; }catch(e){}
+function audioInit(){
+  if(AU.ctx){ AU.ctx.resume&&AU.ctx.resume(); return; }
+  const AC=window.AudioContext||window.webkitAudioContext; if(!AC) return;
+  const c=new AC(); AU.ctx=c;
+  AU.master=c.createGain(); AU.master.gain.value=AU.muted?0:.9; AU.master.connect(c.destination);
+  const len=c.sampleRate*3, buf=c.createBuffer(1,len,c.sampleRate), d=buf.getChannelData(0);
+  let pink=0; for(let i=0;i<len;i++){ pink=pink*.96+(Math.random()*2-1)*.2; d[i]=pink*1.8; } AU.noise=buf;
+  // crowd bed: two filtered noise layers, one slowly swelling like a murmur
+  AU.crowd=c.createGain(); AU.crowd.gain.value=0; AU.crowd.connect(AU.master);
+  for(const [f,q,lv] of [[450,.8,1],[1100,1.2,.6]]){
+    const src=c.createBufferSource(); src.buffer=buf; src.loop=true; src.playbackRate.value=.9+Math.random()*.2;
+    const bp=c.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=f; bp.Q.value=q;
+    const g=c.createGain(); g.gain.value=lv;
+    const lfo=c.createOscillator(), lg=c.createGain(); lfo.frequency.value=.13+Math.random()*.1; lg.gain.value=lv*.35; lfo.connect(lg); lg.connect(g.gain); lfo.start();
+    src.connect(bp); bp.connect(g); g.connect(AU.crowd); src.start(0, Math.random()*2);
+  }
+}
+function setMuted(m){ AU.muted=m; try{localStorage.setItem('fsd-muted',m?'1':'0')}catch(e){}
+  $('#muteBtn').textContent=m?'Sound off':'Sound on'; $('#muteBtn').setAttribute('aria-pressed',!m);
+  if(AU.ctx) AU.master.gain.setTargetAtTime(m?0:.9,AU.ctx.currentTime,.05); }
+const live=()=>AU.ctx && S && !S.demo && !AU.muted;
+function env(g,t,a,peak,dec){ g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(peak,t+a); g.gain.exponentialRampToValueAtTime(.0001,t+a+dec); }
+function noiseBurst(type,freq,q,peak,a,dec,delay=0,rate=1){
+  const c=AU.ctx, t=c.currentTime+delay, src=c.createBufferSource(); src.buffer=AU.noise; src.playbackRate.value=rate;
+  const f=c.createBiquadFilter(); f.type=type; f.frequency.value=freq; f.Q.value=q; const g=c.createGain(); env(g,t,a,peak,dec);
+  src.connect(f); f.connect(g); g.connect(AU.master); src.start(t,Math.random()*2); src.stop(t+a+dec+.1); return f;
+}
+function tone(type,f0,f1,peak,a,dec,delay=0){
+  const c=AU.ctx, t=c.currentTime+delay, o=c.createOscillator(), g=c.createGain(); o.type=type;
+  o.frequency.setValueAtTime(f0,t); o.frequency.exponentialRampToValueAtTime(f1,t+a+dec); env(g,t,a,peak,dec);
+  o.connect(g); g.connect(AU.master); o.start(t); o.stop(t+a+dec+.1); return o;
+}
+const SFX={
+  kick(p){ if(!live())return; tone('sine',150,45,.55*p+.2,.004,.16); noiseBurst('highpass',1800,.7,.25*p+.08,.002,.05); },
+  tap(){ if(!live())return; tone('sine',110,60,.12,.003,.07); },
+  thud(){ if(!live())return; tone('sine',90,40,.5,.005,.22); noiseBurst('lowpass',500,.7,.45,.005,.25); },
+  post(){ if(!live())return; for(const [f,v] of [[880,.25],[1320,.15],[2210,.08]]) tone('sine',f,f*.98,v,.002,.9); },
+  whistle(n=1){ if(!live())return;
+    for(let i=0;i<n;i++){ const o=tone('sine',2950,2900,.22,.02,n>1&&i<n-1?.25:.55,i*.42);
+      const c=AU.ctx, l=c.createOscillator(), lg=c.createGain(); l.frequency.value=28; lg.gain.value=110; l.connect(lg); lg.connect(o.frequency); l.start(c.currentTime+i*.42); l.stop(c.currentTime+i*.42+1); } },
+  ooh(){ if(!live())return; const f=noiseBurst('bandpass',380,3,.5,.25,1.1); f.frequency.linearRampToValueAtTime(650,AU.ctx.currentTime+.9); },
+  cheer(big){ if(!live())return; const v=big?.9:.45;
+    noiseBurst('bandpass',800,.6,v,.35,3.2); noiseBurst('bandpass',1700,.9,v*.55,.5,2.6); noiseBurst('lowpass',300,.7,v*.5,.3,2.4);
+    if(big) for(let i=0;i<5;i++) tone('sawtooth',233+i%2*58,230+i%2*58,.05,.05,.35,.5+i*.45); },
+};
+function crowdLevel(dt){
+  if(!AU.ctx) return;
+  let lv=0;
+  if(S && !S.demo && S.phase!=='menu' && !paused){
+    const b=S.ball, near=Math.max(0,1-Math.min(b.x,W-b.x)/32);
+    lv=.07+.17*near*near+(S.cheer||0)*.25;
+  }
+  AU.crowd.gain.setTargetAtTime(lv,AU.ctx.currentTime,.4);
+}
+
 /* ---------- kicks ---------- */
 function kick(p,dx,dy,speed,vz){
   const b=S.ball, m=hyp(dx,dy)||1; b.vx=dx/m*speed; b.vy=dy/m*speed; b.vz=vz; if(b.z<.05)b.z=.05;
-  p.kickCd=.32; S.lastTouch=p; S.owner=null;
+  p.kickCd=.32; S.lastTouch=p; S.owner=null; SFX.kick(Math.min(1,speed/30));
 }
 const nearBall=(p,r=2.1)=>hyp(S.ball.x-p.x,S.ball.y-p.y)<r && S.ball.z<1.6;
 function humanShoot(p,power){
@@ -315,7 +375,8 @@ function update(dt){
   if(whoT>0){whoT-=dt; if(whoT<=0) $('#who').hidden=true;}
   if(bannerT>0){bannerT-=dt; if(bannerT<=0) $('#banner').classList.remove('show');}
   S.phaseT-=dt;
-  if(S.phase==='kickoff'){ if(S.phaseT<=0) S.phase='play'; else return; }
+  if(S.phase==='kickoff'){ if(S.phaseT<=0){ S.phase='play'; SFX.whistle(1); } else return; }
+  if(S.cheer>0) S.cheer=Math.max(0,S.cheer-dt*.28);
   if(S.phase==='goal' && S.phaseT<=0){ if(S.time>=MATCH_REAL){endMatch();return} placeKickoff(S.kickoffTeam); return; }
   if(S.phase==='play'){ const before=Math.floor(S.time/MATCH_REAL*90); S.time+=dt;
     if(Math.floor(S.time/MATCH_REAL*90)!==before) updateHUD();
@@ -388,7 +449,7 @@ function slideHits(p){
   // feet first: the contact point is a little ahead of the body
   if(hyp(b.x-p.x-p.fx*.5,b.y-p.y-p.fy*.5)<1.3 && b.z<.8 && o!==p && (!o||o.team!==p.team)){
     if(o){ o.down=1; o.kickCd=1; o.vx*=.2; o.vy*=.2;
-      if(p===S.ctrl) banner('Tackle!',.9); else if(o===S.ctrl) banner('Tackled',.9); }
+      if(p===S.ctrl) banner('Tackle!',.9); else if(o===S.ctrl) banner('Tackled',.9); SFX.thud(); }
     S.owner=null; const sp=7+rnd()*3;
     b.vx=p.fx*sp+(rnd()-.5)*3; b.vy=p.fy*sp+(rnd()-.5)*3; b.vz=1.2; b.z=.05;
     S.lastTouch=p; p.kickCd=.2; p.hit=true; return;
@@ -398,7 +459,7 @@ function slideHits(p){
     if(q.team===p.team||q.down>0||q.role==='gk') continue;
     if(hyp(q.x-p.x,q.y-p.y)<1.1){ q.down=.8; q.vx*=.2; q.vy*=.2;
       if(S.owner===q){ S.owner=null; b.vx=p.fx*5; b.vy=p.fy*5; }
-      p.hit=true; break; }
+      p.hit=true; SFX.thud(); break; }
   }
 }
 function ballStep(dt){
@@ -421,13 +482,13 @@ function ballStep(dt){
     // posts
     for(const py of [CY-GW/2,CY+GW/2]){
       const dx=b.x-gx, dy=b.y-py, d=hyp(dx,dy);
-      if(d<.2 && b.z<GH){ const nx=dx/d, ny=dy/d, dot=b.vx*nx+b.vy*ny; if(dot<0){b.vx-=2*dot*nx*.8;b.vy-=2*dot*ny*.8;} b.x=gx+nx*.2; b.y=py+ny*.2; }
+      if(d<.2 && b.z<GH){ const nx=dx/d, ny=dy/d, dot=b.vx*nx+b.vy*ny; if(dot<0){ if(dot<-4 && S.phase==='play'){SFX.post();SFX.ooh();} b.vx-=2*dot*nx*.8;b.vy-=2*dot*ny*.8;} b.x=gx+nx*.2; b.y=py+ny*.2; }
     }
     const crossed= side<0 ? (b.x<0&&px>=0) : (b.x>W&&px<=W);
     const out= side<0 ? b.x<0 : b.x>W;
     if(!out) continue;
     if(crossed && Math.abs(b.y-CY)<GW/2 && b.z<GH && S.phase==='play'){ goal(side<0?1:0, side); }
-    else { b.x=side<0?BR:W-BR; b.vx=-b.vx*.55; }
+    else { if(S.phase==='play' && Math.abs(b.y-CY)<11 && Math.abs(b.vx)>9) SFX.ooh(); b.x=side<0?BR:W-BR; b.vx=-b.vx*.55; }
   }
 }
 function glue(p,dt,snap){
@@ -467,10 +528,10 @@ function touches(dt){
   const p=best;
   if(p.role==='gk' && p!==S.ctrl){
     const att=p.team?-1:1, sp=hyp(b.vx,b.vy);
-    if(sp>12 && S.lastTouch && S.lastTouch.team!==p.team) banner('Save!',1);
+    if(sp>12 && S.lastTouch && S.lastTouch.team!==p.team) {banner('Save!',1); SFX.ooh();}
     kick(p,att*40,(10+rnd()*48)-p.y,22+rnd()*4,6+rnd()*3); p.kickCd=.6; return;
   }
-  S.owner=p; S.ownT=.4; S.lastTouch=p;
+  S.owner=p; S.ownT=.4; S.lastTouch=p; SFX.tap();
   if(p.team===0 && p!==S.ctrl && !S.demo){ S.ctrl=p; S.switchT=.8; }
   glue(p,dt,false);
 }
@@ -478,9 +539,10 @@ function goal(team,side){
   S.score[team]++; S.phase='goal'; S.phaseT=2.6; S.kickoffTeam=1-team; S.inNet=side; S.owner=null;
   S.charging=false; S.charge=0;
   banner(team===0?'Goal!':'Blue score',2.2); updateHUD();
+  S.cheer=1; S.cheerTeam=team; SFX.cheer(team===0);
 }
 function endMatch(){
-  S.phase='end'; updateHUD(); $('#clock').textContent="90'";
+  S.phase='end'; SFX.whistle(3); S.cheer=.8; S.cheerTeam=S.score[0]>=S.score[1]?0:1; SFX.cheer(S.score[0]>S.score[1]); updateHUD(); $('#clock').textContent="90'";
   const [a,c]=S.score;
   $('#f0').textContent=a; $('#f1').textContent=c;
   $('#endTitle').textContent= a>c?'Orange win':a<c?'Blue win':'Honours even';
@@ -552,6 +614,19 @@ function paintBg2D(w,h,ox,oy,sc){
   const c=document.createElement('canvas'); c.width=w; c.height=h; const x=c.getContext('2d');
   const X=v=>ox+v*sc, Y=v=>oy+v*sc;
   x.fillStyle='#14231f'; x.fillRect(0,0,w,h);
+  // fans packed around the pitch, seen from above: shoulders and heads
+  const kit2=[['#ff7a3d','#ff9152','#e8652c','#ffffff'],['#3fa7ff','#2f86d6','#8fd0ff','#ffffff'],['#22303a','#eef3ea','#8a2a2a','#3b5d3b','#f2d14b']];
+  const skin2=['#d9a77f','#a8734f','#7a4f33','#f0c8a0','#5c3a24'], hair2=['#1d1d1d','#2a1c12','#5a3a1e','#c9a15a','#7a4a22'];
+  const st=.95, x0=Math.floor(-ox/sc/st)*st, y0=Math.floor(-oy/sc/st)*st, pk=a=>a[(Math.random()*a.length)|0];
+  for(let fy=y0; fy<(h-oy)/sc; fy+=st) for(let fx=x0+((fy/st)%2?st/2:0); fx<(w-ox)/sc; fx+=st){
+    if(fx>-4.3 && fx<W+4.3 && fy>-4.3 && fy<H+4.3) continue;
+    if(Math.random()<.06) continue;
+    const fan=Math.random()<(fx<CX?.6:.2)?0:Math.random()<.75?1:2;
+    const px=X(fx+(Math.random()-.5)*.2), py=Y(fy+(Math.random()-.5)*.2), u=sc;
+    x.fillStyle=pk(kit2[fan]); x.beginPath(); x.ellipse(px,py,u*.32,u*.2,0,0,7); x.fill();
+    x.fillStyle=Math.random()<.85?pk(hair2):pk(skin2); x.beginPath(); x.arc(px,py-u*.02,u*.14,0,7); x.fill();
+  }
+  x.fillStyle='#1b2a26'; x.fillRect(X(-4.1),Y(-4.1),(W+8.2)*sc,(H+8.2)*sc);
   x.fillStyle='#24602b'; x.fillRect(X(-3.2),Y(-3.2),(W+6.4)*sc,(H+6.4)*sc);
   drawPitch(x,ox,oy,sc);
   // advertising boards around the pitch
@@ -576,7 +651,7 @@ function paintBg2D(w,h,ox,oy,sc){
   return c;
 }
 function draw2D(){
-  const w=cv2.width,h=cv2.height, m=4;
+  const w=cv2.width,h=cv2.height, m=6;
   const sc=Math.min(w/(W+m*2),h/(H+m*2)), ox=(w-W*sc)/2, oy=(h-H*sc)/2;
   const X=x=>ox+x*sc, Y=y=>oy+y*sc;
   if(!BG2||BG2.width!==w||BG2.height!==h) BG2=paintBg2D(w,h,ox,oy,sc);
@@ -668,9 +743,16 @@ function init3D(){
   const roofMat=new THREE.MeshLambertMaterial({color:0x18222a,side:THREE.DoubleSide});
   const strip=new THREE.MeshBasicMaterial({color:0xfff1cc});
   const steel=new THREE.MeshLambertMaterial({color:0x56646c});
-  const mkStand=(len,x,z,ry)=>{const t=crowdTex.clone();t.needsUpdate=true;t.repeat.set(len/30,1);
+  const seats=[];
+  const mkStand=(len,x,z,ry)=>{
     const g=new THREE.Group();
-    const s=new THREE.Mesh(new THREE.BoxGeometry(len,1,22),new THREE.MeshLambertMaterial({map:t}));s.rotation.x=-.5;s.position.set(0,5,-11);s.receiveShadow=true;g.add(s);
+    const s=new THREE.Mesh(new THREE.BoxGeometry(len,1,22.5),concrete);s.rotation.x=.49;s.position.set(0,5.3,-11.5);g.add(s);
+    const co=Math.cos(ry), sn=Math.sin(ry), q=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0),ry);
+    for(let k=0;k<14;k++){ const lz=-2.2-k*1.42, sy=.57+(-1.6-lz)*.533;
+      for(let lx=-len/2+.6;lx<len/2-.4;lx+=.82){ if(rnd()<.07) continue;
+        const jx=lx+(rnd()-.5)*.22, wx=x+jx*co+lz*sn;
+        seats.push({x:wx,y:sy,z:z-jx*sn+lz*co,q,co,sn,ph:rnd()*6.28,amp:.6+rnd()*.7,h:.9+rnd()*.2,
+          fan: rnd()<(wx<0?.62:.22)?0 : rnd()<.75?1:2}); } }
     const wall=new THREE.Mesh(new THREE.BoxGeometry(len,18,1),concrete);wall.position.set(0,9,-21.5);g.add(wall);
     const roof=new THREE.Mesh(new THREE.BoxGeometry(len,.5,17),roofMat);roof.position.set(0,18.5,-13.5);roof.rotation.x=.07;g.add(roof);
     const lip=new THREE.Mesh(new THREE.BoxGeometry(len*.97,.18,.35),strip);lip.position.set(0,17.75,-5.3);g.add(lip);
@@ -689,6 +771,22 @@ function init3D(){
     glow.scale.set(26,26,1);glow.position.set(x*.97,36.5,z*.97);sc.add(glow);
   }
   mkStand(W+40,0,-(H/2+7),0); mkStand(W+40,0,H/2+7,Math.PI); mkStand(H+30,-(W/2+8),0,Math.PI/2); mkStand(H+30,W/2+8,0,-Math.PI/2);
+  {
+    const n=seats.length, white=()=>new THREE.MeshLambertMaterial({color:0xffffff});
+    r.cBody=new THREE.InstancedMesh(new THREE.BoxGeometry(.44,.6,.26),white(),n);
+    r.cLegs=new THREE.InstancedMesh(new THREE.BoxGeometry(.36,.42,.22),white(),n);
+    r.cHead=new THREE.InstancedMesh(new THREE.SphereGeometry(.125,8,6),white(),n);
+    r.cArms=new THREE.InstancedMesh(new THREE.BoxGeometry(.1,.48,.1),white(),n*2);
+    const C=a=>a.map(c=>new THREE.Color(c));
+    const kits=[C([0xff7a3d,0xff7a3d,0xff9152,0xe8652c,0xffffff]),C([0x3fa7ff,0x3fa7ff,0x2f86d6,0x8fd0ff,0xffffff]),C([0x22303a,0xeef3ea,0x8a2a2a,0x3b5d3b,0xf2d14b,0x5b4a7a])];
+    const skin=C([0xd9a77f,0xa8734f,0x7a4f33,0xf0c8a0,0x5c3a24]), trousers=C([0x1f2a44,0x2b2b2b,0x4a5568,0x3b3326,0x6b7280]);
+    const pick=a=>a[(rnd()*a.length)|0];
+    seats.forEach((st,i)=>{ const k=pick(kits[st.fan]), sk=pick(skin);
+      r.cBody.setColorAt(i,k); r.cHead.setColorAt(i,sk); r.cLegs.setColorAt(i,pick(trousers)); r.cArms.setColorAt(2*i,sk); r.cArms.setColorAt(2*i+1,sk); });
+    r.seats=seats; r.crowdT=0;
+    for(const m of [r.cBody,r.cLegs,r.cHead,r.cArms]){ m.instanceMatrix.setUsage(THREE.DynamicDrawUsage); sc.add(m); }
+    placeCrowd(r,0,0,0);
+  }
   // players
   const skins=[0xd9a77f,0xa8734f,0x7a4f33].map(c=>new THREE.MeshLambertMaterial({color:c}));
   const hairs=[0x2a1c12,0x120d0a,0x5a3a1e,0x1d1d1d,0x7a4a22].map(c=>new THREE.MeshLambertMaterial({color:c}));
@@ -741,6 +839,26 @@ function init3D(){
   r.cx=0;r.cz=0;
   return r;
 }
+const _M=new THREE.Matrix4(), _V=new THREE.Vector3(), _S=new THREE.Vector3(1,1,1);
+function placeCrowd(r,t,cheer,team){
+  const B=r.cBody,L=r.cLegs,Hd=r.cHead,A=r.cArms;
+  r.seats.forEach((s,i)=>{
+    // fans of the scoring side jump and throw their arms up; neutrals join in a little
+    const c= s.fan===team?cheer : s.fan===2?cheer*.5 : 0;
+    const jump=c>0?Math.max(0,Math.sin(t*7*s.amp+s.ph))*.32*c:0, sway=Math.sin(t*1.1+s.ph)*.02;
+    const y=s.y+jump, h=s.h;
+    _S.set(1,h,1);
+    _V.set(s.x,y+.21*h,s.z); _M.compose(_V,s.q,_S); L.setMatrixAt(i,_M);
+    _V.set(s.x+sway*s.co,y+.72*h,s.z-sway*s.sn); _M.compose(_V,s.q,_S); B.setMatrixAt(i,_M);
+    _S.set(1,1,1); _V.set(s.x+sway*s.co,y+1.15*h,s.z-sway*s.sn); _M.compose(_V,s.q,_S); Hd.setMatrixAt(i,_M);
+    const up=c>.2 && s.amp>.8;
+    for(const sd of [-1,1]){
+      const ox=sd*(up?.2:.28);
+      _V.set(s.x+ox*s.co,y+(up?1.32:.74)*h,s.z-ox*s.sn); _M.compose(_V,s.q,_S); A.setMatrixAt(2*i+(sd>0?1:0),_M);
+    }
+  });
+  for(const m of [B,L,Hd,A]) m.instanceMatrix.needsUpdate=true;
+}
 function draw3D(dt){
   if(!R||!S) return;
   const t=performance.now()/1000;
@@ -769,6 +887,8 @@ function draw3D(dt){
   const tx=clamp(b.x-CX,-38,38), tz=(b.y-CY)*.45, f=Math.min(1,dt*2.5);
   R.cx+=(tx-R.cx)*f; R.cz+=(tz-R.cz)*f;
   R.cam.position.set(R.cx,17*k,R.cz+31*k); R.cam.lookAt(R.cx,0,R.cz-8);
+  const ch=S.cheer||0; R.crowdT+=dt;
+  if(ch>.01 || R.crowdT>.12){ placeCrowd(R,performance.now()/1000,ch,S.cheerTeam); R.crowdT=0; }
   R.renderer.render(R.scene,R.cam);
 }
 
@@ -792,6 +912,7 @@ function togglePause(){
   paused=!paused; $('#pauseOv').hidden=!paused; $('#pauseBtn').textContent=paused?'Resume':'Pause';
 }
 function start(){
+  audioInit();
   const keep=view; newMatch();
   if(R){ R.players.forEach(m=>R.scene.remove(m.g)); R.renderer.domElement.remove(); R.renderer.dispose(); R=null; }
   setView(keep);
@@ -803,6 +924,7 @@ $('#v2d').onclick=()=>setView('2d'); $('#v3d').onclick=()=>setView('3d');
 $('#m2d').onclick=()=>setView('2d'); $('#m3d').onclick=()=>setView('3d');
 document.querySelectorAll('[data-d]').forEach(b=>b.onclick=()=>{diff=b.dataset.d;document.querySelectorAll('[data-d]').forEach(o=>o.setAttribute('aria-pressed',o===b))});
 $('#startBtn').onclick=start; $('#againBtn').onclick=start; $('#menuBtn').onclick=toMenu; $('#quitBtn').onclick=toMenu;
+$('#muteBtn').onclick=()=>{audioInit();setMuted(!AU.muted)}; setMuted(AU.muted);
 $('#resumeBtn').onclick=togglePause; $('#pauseBtn').onclick=togglePause;
 
 // attract mode behind the menu: a live sample match the CPU plays against itself
@@ -813,6 +935,7 @@ function loop(now){
   if(S && S.demo && !$('#menu').hidden){ demoStep(dt); }
   else update(dt);
   const pw=$('#power'); pw.hidden=!(S&&S.charging); if(S&&S.charging) $('#powerFill').style.width=(S.charge*100)+'%';
+  crowdLevel(dt);
   if(view==='2d') draw2D(); else draw3D(dt);
   requestAnimationFrame(loop);
 }
@@ -827,6 +950,7 @@ function demoStep(dt){
   for(const p of S.players) ai(p,dt);
   movePlayers(dt,null);
   ballStep(dt/2); ballStep(dt/2);
+  if(S.cheer>0) S.cheer=Math.max(0,S.cheer-dt*.28);
   S.ctrl=ctrl;
   if(S.phase==='goal'){ S.phaseT-=dt; if(S.phaseT<=0){placeKickoff(S.kickoffTeam);S.phase='play';} }
   else touches(dt);
